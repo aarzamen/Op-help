@@ -84,9 +84,11 @@ docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration (task #1 belo
 - [x] Add `src/MapSymbols.tsx`, append its CSS to `src/index.css`, and render
       `<MapSymbolsSection />` at the bottom of the TOOLS tab (placed after
       "COMBAT ORDERS", before the tools NotesBlock).
-- [x] Load `JetBrains Mono` + `IBM Plex Sans` via Google Fonts in `index.html` —
-      both were referenced throughout the CSS but never imported, so all labels were
-      falling back to system fonts. This fixes app-wide typography.
+- [x] Load `JetBrains Mono` + `IBM Plex Sans` — both were referenced throughout the
+      CSS but never imported, so all labels were falling back to system fonts. Fonts
+      are **self-hosted** via `@fontsource` (latin subsets imported in `src/main.tsx`),
+      not the Google Fonts CDN, so typography is consistent offline and the app makes
+      no third-party font request (relevant for field use / OPSEC).
 - Spec: [`docs/INTEGRATION_PROMPT.md`](docs/INTEGRATION_PROMPT.md).
 - Acceptance: TOOLS tab shows a "MAP SYMBOLS" 4-column grid of 12 cards; friendly =
   rectangle, hostile = diamond; BN COC = two echelon ticks, CO COC = one; toggling
