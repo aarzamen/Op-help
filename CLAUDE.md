@@ -12,9 +12,10 @@ APP-6 map-symbols appendix). It is a client-only React SPA scaffolded as a Googl
 AI Studio app. All user data lives in the browser via `localStorage`; there is no
 backend.
 
-> Note: despite the AI Studio scaffolding (`metadata.json` declares a server-side
-> Gemini capability and `@google/genai` is a dependency), **no AI is wired up yet**.
-> See the to-do list below.
+> Note: the AI Studio Gemini scaffolding has been **removed** — no `@google/genai`
+> dependency, no `metadata.json` capability, and no build-time key injection. The app
+> is a pure client-side reference/notes tool. If AI is added later, route it through a
+> server proxy; never reintroduce a client-side API key.
 
 ## Tech stack
 
@@ -31,23 +32,29 @@ npm install        # install deps
 npm run dev        # Vite dev server on :3000 (host 0.0.0.0)
 npm run build      # production build to dist/
 npm run preview    # preview the production build
-npm run lint       # tsc --noEmit (type-check only — there is no ESLint yet)
+npm run typecheck  # tsc --noEmit (type-check)
+npm run lint       # eslint .
+npm run format     # prettier --write .
 ```
 
-There are no automated tests. Verify changes by running the app and exercising the
-affected tab.
+There are no automated tests yet. CI (`.github/workflows/ci.yml`) runs `typecheck`,
+`lint`, and `build` on every PR. Verify behavioral changes by running the app and
+exercising the affected tab.
 
 ## Project structure
 
 ```
-index.html          # entry; loads Google Fonts + /src/main.tsx
-src/main.tsx        # React root
-src/App.tsx         # the entire app (~1.4k lines): all views, components, export logic
+index.html          # entry; /src/main.tsx
+src/main.tsx        # React root; ErrorBoundary + self-hosted @fontsource imports
+src/App.tsx         # the bulk of the app (~1.4k lines): all views, components, export logic
 src/MapSymbols.tsx  # NATO/APP-6 map-symbol glyphs + MapSymbolsSection (TOOLS appendix)
+src/ErrorBoundary.tsx       # top-level error boundary (wraps <App/> in main.tsx)
 src/index.css       # design tokens (:root), component CSS, blackout theme, map-symbols
-metadata.json       # AI Studio app manifest (name, permissions, capabilities)
-vite.config.ts      # Vite/Tailwind config; injects GEMINI_API_KEY (see security to-do)
-docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration (task #1 below)
+metadata.json       # AI Studio app manifest (name, permissions)
+vite.config.ts      # Vite/Tailwind config
+eslint.config.js    # flat ESLint config
+.github/workflows/ci.yml    # CI: typecheck + lint + build
+docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration
 ```
 
 ## Architecture & conventions (read before editing)
@@ -62,6 +69,9 @@ docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration (task #1 belo
   - `pcc-*` / `pci-*` — editable checklist contents
   - `insert-note` is a `window` CustomEvent used to push text (e.g. a fetched MGRS
     grid) into an `InlineNotes` field by `id`.
+- **Toast + safe writes.** Use the module-level `notify(msg, type)` to surface a
+  transient toast from anywhere (App renders it via the `app-toast` event), and
+  `safeSetItem` for `localStorage` writes so a `QuotaExceededError` can't break typing.
 - **Export reads `localStorage` directly** (not React state) in `generateExportText`
   and `handleExportPDF`. If you add a new note field, wire it into both exporters.
 - **Theming via CSS variables.** Light theme is the `:root` block in `index.css`.
@@ -94,58 +104,57 @@ docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration (task #1 belo
   rectangle, hostile = diamond; BN COC = two echelon ticks, CO COC = one; toggling
   blackout turns all 12 glyphs (including the red cross) red; labels in JetBrains Mono.
 
-### Open issues (from code review) — roughly highest-impact first
+### Milestone A — safety & cleanup (DONE)
 
-**Safety / correctness**
-- [ ] **Compass grid-north is faked.** `TopCompass` hardcodes a 12° declination
-      (`App.tsx` ~L266: `setHeading(mHeading - 12)`) and never uses the geolocation it
-      requests. The "G" (grid/true) arrow is therefore wrong everywhere. Compute real
-      declination from the fetched lat/lon, or remove the G arrow and label the widget
-      magnetic-only. Misleading grid-north is a real hazard for a land-nav tool.
-- [ ] **Blackout mode isn't persisted.** It's plain `useState(false)` (`App.tsx`
-      ~L550), so a reload during night ops flashes a white screen and resets. Move it
-      to `useLocalStorage`.
+- [x] **Compass rebuilt.** `TopCompass` shows live **G** (grid/true) and **M** (magnetic)
+      arrows. The G–M angle is the **real WMM declination** computed from the fetched
+      lat/lon (`geomagnetism`), replacing the hardcoded 12° fake. iOS/iframe handling:
+      requests orientation + motion permission together from the tap (before geolocation,
+      so the gesture isn't consumed); activates immediately and fetches declination in the
+      background; detects the AI Studio iframe / missing sensor events and shows a useful
+      message instead of a dead widget. Sensor frame permissions (`accelerometer` /
+      `gyroscope` / `magnetometer`) added to `metadata.json`.
+- [x] **Blackout mode persists** via `useLocalStorage('blackout-mode', …)`.
+- [x] **Silent failures surfaced.** GET GRID (now `GetGridButton`) has a loading state,
+      a geolocation timeout, and success/error toasts; clipboard copy reports failure.
+      A module-level toast system (`notify` + the `app-toast` event) drives all of it.
+- [x] **Guarded storage + error boundary.** `safeSetItem` wraps `localStorage` writes
+      so a `QuotaExceededError` can't break typing; `src/ErrorBoundary.tsx` wraps the app.
+- [x] **AI scaffolding stripped.** Removed `@google/genai`, the `vite.config` key
+      `define`, and the `metadata.json` Gemini capability — closes the key-leak vector.
+- [x] **Dead deps removed:** `express`, `better-sqlite3`, `@types/express`, `dotenv`.
+- [x] **Tooling:** ESLint (flat config) + Prettier + GitHub Actions CI (typecheck,
+      lint, build). Also added the missing `@types/react` / `@types/react-dom`, so the
+      app now actually type-checks against React types (it previously treated React as
+      `any`).
+
+### Remaining issues — roughly highest-impact first
+
+**Robustness / data**
 - [ ] **Edited checklists are never exported.** Copy/PDF for the TOOLS view only emit
       `notes-tools`; user edits to `pcc-*`/`pci-*` checklists are unreachable. Include
       them in `generateExportText`/`handleExportPDF`.
-
-**Security / viability**
-- [ ] **`GEMINI_API_KEY` is inlined into the client bundle** via `vite.config.ts`
-      `define` (L11). It's unused today, but this pattern leaks the key to anyone who
-      views source. Remove the define; route any future AI calls through a server.
-- [ ] **No AI despite the "AI Studio app" framing.** Either build a real feature
-      (e.g. draft an EMLCOA from SALUTE+DRAWD, critique a mission statement, expand
-      notes into a full OPORD) or drop the Gemini capability, `@google/genai` dep, and
-      key so the app stops advertising it.
-- [ ] **OPSEC.** Operational content (enemy SALUTE, friendly forces, grids, mission)
-      is stored unencrypted in `localStorage` with no auth on a public-ish deployment.
-      Review handling before any real-world use.
-- [ ] **Not a PWA** (no manifest, no service worker) — no guaranteed offline load,
-      which undercuts the field-use value prop.
-
-**Robustness / edge cases**
-- [ ] **GET GRID failures are silent.** MGRS conversion errors only `console.error`
-      (`App.tsx` ~L929), e.g. polar latitudes; and the geolocation call has no timeout
-      or loading state. Add user-visible error/loading feedback.
-- [ ] **Clipboard copy failure is silent** — the success toast only fires on success;
-      the `.catch` just logs. Surface failures (e.g. non-secure context).
-- [ ] **Unguarded `localStorage.setItem`** in `InlineNotes`/`NotesBlock` `handleChange`
-      can throw `QuotaExceededError` mid-keystroke; there's no React error boundary.
-      Wrap writes and add a top-level boundary.
-- [ ] **`EditableChecklist` uses array index as React key** (`App.tsx` ~L70); deleting
-      while editing mis-targets rows. Use stable ids.
+- [ ] **`EditableChecklist` uses array index as React key**; deleting while editing
+      mis-targets rows. Use stable ids.
 - [ ] **No "new operation"/reset and a single global note namespace** — can't keep
       multiple plans, and clearing site data wipes everything with no export/backup.
 
-**Cleanup / tooling**
-- [ ] **Remove dead backend deps:** `express`, `better-sqlite3`, `@types/express`,
-      `dotenv` — there is no server in the repo and `better-sqlite3` bloats installs.
+**Viability**
+- [ ] **OPSEC.** Operational content (enemy SALUTE, friendly forces, grids, mission)
+      is stored unencrypted in `localStorage` with no auth. Review handling (consider
+      client-side encryption / a panic-wipe) before any real-world use.
+- [ ] **Not a PWA** (no manifest, no service worker) — no guaranteed offline load,
+      which undercuts the field-use value prop. (Fonts are already self-hosted.)
+
+**Accuracy / cleanup**
+- [ ] **Grid vs. true north.** The compass now corrects for magnetic declination (true
+      north). Grid north additionally differs by UTM grid convergence; add it if exact
+      grid bearings are required.
 - [ ] **De-hardcode unit-specifics** baked into the reference: PDF footer
-      `"WCC · SEABEE CONSTRUCTION ORDER"` (`App.tsx` ~L812), `"In this OPORD: MLR Obj
-      1/2"` (~L1311), `"BPT task in this OPORD"` (~L1345), `"relevant in Okinawa"`
-      (~L1202). Parameterize so the doctrinal reference is reusable.
+      `"WCC · SEABEE CONSTRUCTION ORDER"`, `"In this OPORD: MLR Obj 1/2"`, `"BPT task in
+      this OPORD"`, `"relevant in Okinawa"`. Parameterize so the reference is reusable.
 - [ ] **Accessibility:** tabs, bottom nav, and accordions are `<div onClick>` with no
       keyboard handling or ARIA roles. Make them real buttons / focusable.
 - [ ] **Split `App.tsx`** (~1.4k lines) into components and move the doctrinal content
-      into data; add ESLint/Prettier, a test setup, and CI. `@ts-ignore` usages
+      into data; add a test setup (Vitest + RTL). Remaining `@ts-ignore` usages
       (compass, speech) should be typed properly.
