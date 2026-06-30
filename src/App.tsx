@@ -43,7 +43,9 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      // Route through safeSetItem so a QuotaExceededError surfaces a toast instead of
+      // silently dropping the write (same hardening as InlineNotes/NotesBlock).
+      safeSetItem(key, JSON.stringify(valueToStore));
     } catch (error) {
       console.log(error);
     }
