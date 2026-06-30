@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Share2, Download, Mic, MicOff, Moon, Compass, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import * as mgrs from 'mgrs';
+import MapSymbolsSection from './MapSymbols';
 
 // --- Components ---
 
@@ -1358,6 +1359,8 @@ export default function App() {
               <LeafItem letter="W" text={<span><strong>WARNORD</strong> — Issued immediately upon receipt of mission. Initiates preparation. Essential details + planning time</span>} />
               <LeafItem letter="F" text={<span><strong>FRAGORD</strong> — Fragment order. Focuses on <em>Execution</em> paragraph. Everything else stays the same.</span>} />
             </Block>
+
+            <MapSymbolsSection />
 
             <NotesBlock sectionKey="tools" />
           </div>
