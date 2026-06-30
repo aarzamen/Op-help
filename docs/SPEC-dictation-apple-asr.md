@@ -130,7 +130,9 @@ Do this in order. **Phase 1 ships in the current web repo today and de-risks eve
 Refactor `src/App.tsx`'s `useDictation` into a provider-agnostic hook. Shape:
 
 ```ts
-type DictationStatus = '' | 'requesting' | 'listening' | string; // free-text errors ok
+// Keeps IDE completions/typo-checking on the known states while still accepting
+// free-text error strings (a plain `| string` would collapse the whole union to string).
+type DictationStatus = 'idle' | 'requesting' | 'listening' | 'error' | (string & {});
 interface UseDictation {
   isDictating: boolean;
   toggleDictation: () => void;
@@ -141,7 +143,8 @@ const useDictation = (onResult: (finalText: string) => void): UseDictation => { 
 
 Behavior:
 - `targetIdRef = useRef('dictation-' + crypto.randomUUID())` — stable per instance.
-  (Avoid `Math.random()` only if you adopt a deterministic test harness; fine for the app.)
+  Prefer `crypto.randomUUID()` over `Math.random()`. If you later add deterministic
+  tests, mock `crypto.randomUUID()` rather than falling back to a weaker RNG.
 - **Native present** (`window.webkit?.messageHandlers?.opordSpeech`):
   - `toggleDictation` posts `{command:'start'|'stop', targetId, onDeviceOnly:true}`.
   - Listen for `opord-asr-result`; **ignore events whose `detail.targetId` ≠ this hook's**.
@@ -150,6 +153,10 @@ Behavior:
   - `type:'status'` → map to `dictationStatus`; `stopped`/`*-denied` → `isDictating=false`.
 - **Native absent**: the existing `SpeechRecognition` path verbatim (keep the
   unsupported-browser alert).
+- **Types:** `window.webkit` is not in `lib.dom.d.ts`. Add a small ambient declaration
+  (e.g. `src/webkit.d.ts`) for `Window.webkit.messageHandlers.opordSpeech` and the
+  `opord-asr-result` `CustomEvent` detail shape, so the adapter stays `@ts-ignore`-free
+  (consistent with the D1 goal in `SPEC-framework-hardening.md`).
 - `InlineNotes`/`NotesBlock`: consume `dictationStatus` and render it under the DICTATE
   button in tiny mono text. **Do not** change localStorage keys or the append behavior.
 
