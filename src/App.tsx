@@ -2,7 +2,29 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Share2, Download, Mic, MicOff, Moon, Compass, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import * as mgrs from 'mgrs';
+import geomagnetism from 'geomagnetism';
 import MapSymbolsSection from './MapSymbols';
+
+// --- Toast / storage helpers ---
+
+type ToastType = 'success' | 'error';
+
+/** Fire a transient toast from anywhere in the tree (App renders it). */
+function notify(msg: string, type: ToastType = 'success') {
+  window.dispatchEvent(new CustomEvent('app-toast', { detail: { msg, type } }));
+}
+
+/** localStorage.setItem that never throws mid-keystroke (e.g. QuotaExceededError). */
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.error('localStorage write failed', e);
+    notify('Storage full — changes may not be saved', 'error');
+    return false;
+  }
+}
 
 // --- Components ---
 
@@ -169,128 +191,256 @@ const LeafItem = ({ letter, text, style }: { letter: string, text: React.ReactNo
   </div>
 );
 
+const GetGridButton = () => {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = () => {
+    if (!navigator.geolocation) {
+      notify('Geolocation not supported by this browser', 'error');
+      return;
+    }
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLoading(false);
+        const { latitude, longitude } = position.coords;
+        try {
+          const grid = mgrs.forward([longitude, latitude], 5);
+          let formattedGrid = grid;
+          if (grid.length === 15) {
+            formattedGrid = `${grid.substring(0, 3)} ${grid.substring(3, 5)} ${grid.substring(5, 10)} ${grid.substring(10, 15)}`;
+          } else if (grid.length === 14) {
+            formattedGrid = `${grid.substring(0, 2)} ${grid.substring(2, 4)} ${grid.substring(4, 9)} ${grid.substring(9, 14)}`;
+          }
+          window.dispatchEvent(new CustomEvent('insert-note', { detail: { id: 'osmeac-o', text: `Present Location: ${formattedGrid}` } }));
+          notify('Grid added to Orientation notes', 'success');
+        } catch (e) {
+          console.error(e);
+          notify('Could not convert location to MGRS (out of range?)', 'error');
+        }
+      },
+      (err) => {
+        setLoading(false);
+        console.error(err);
+        notify('Location failed — check permissions & services', 'error');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="ml-2 mt-0.5 shrink-0 bg-[var(--text-secondary)] text-[var(--bg)] text-[9px] font-bold px-2 py-1 rounded active:bg-[var(--text-primary)] hover:bg-[var(--text-tertiary)] transition-colors disabled:opacity-60"
+    >
+      {loading ? 'LOCATING…' : 'GET GRID'}
+    </button>
+  );
+};
+
+// --- Compass helpers ---
+
+type IOSOrientationEvent = DeviceOrientationEvent & {
+  webkitCompassHeading?: number;
+  webkitCompassAccuracy?: number;
+};
+
+type PermissionCapableCtor = {
+  requestPermission?: () => Promise<PermissionState>;
+};
+
+const normalizeDeg = (deg: number): number => ((deg % 360) + 360) % 360;
+
+// Keeps rotation smooth across 359 -> 0 instead of spinning the long way around.
+const smoothCompassDeg = (previousContinuousDeg: number, nextNormalizedDeg: number, factor = 0.28): number => {
+  const previousNormalized = normalizeDeg(previousContinuousDeg);
+  const delta = ((nextNormalizedDeg - previousNormalized + 540) % 360) - 180;
+  return previousContinuousDeg + delta * factor;
+};
+
+const isInsideFrame = (): boolean => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+};
+
+const CompassArrow = ({
+  label,
+  rotationDeg,
+  color,
+  length = 31,
+}: {
+  label: string;
+  rotationDeg: number;
+  color: string;
+  length?: number;
+}) => (
+  <div
+    className="absolute inset-0 origin-center transition-transform duration-75 ease-linear"
+    style={{ transform: `rotate(${rotationDeg}deg)` }}
+  >
+    <div className="absolute left-1/2 top-[9px] -translate-x-1/2 flex flex-col items-center">
+      <div className="font-mono text-[11px] font-black leading-none" style={{ color }}>
+        {label}
+      </div>
+      <div className="relative mt-[2px] w-[2px]" style={{ height: length, backgroundColor: color }}>
+        <div
+          className="absolute -top-[6px] left-1/2 h-0 w-0 -translate-x-1/2 border-l-[4px] border-r-[4px] border-b-[7px] border-l-transparent border-r-transparent"
+          style={{ borderBottomColor: color }}
+        />
+      </div>
+    </div>
+  </div>
+);
+
 const TopCompass = () => {
   const [isActive, setIsActive] = useState(false);
-  const [heading, setHeading] = useState<number>(0);
-  const [magHeading, setMagHeading] = useState<number>(0);
+  const [magHeadingDeg, setMagHeadingDeg] = useState<number | null>(null);
+  const [declination, setDeclination] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState<string>('');
 
-  const handleTap = async () => {
-    setStatusMsg('');
-    let motionGranted = false;
+  const lastHeadingRef = useRef<number | null>(null);
+  const noEventTimerRef = useRef<number | null>(null);
 
-    // 1. Motion permission MUST be requested synchronously with user action on iOS
-    // @ts-ignore
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      try {
-        // @ts-ignore
-        const permissionState = await DeviceOrientationEvent.requestPermission();
-        if (permissionState === 'granted') {
-          motionGranted = true;
-        } else {
-          setStatusMsg('Motion permission denied.');
-          return;
-        }
-      } catch (err) {
-        console.error("DeviceOrientationEvent requestPermission error:", err);
-        setStatusMsg('Motion permission failed.');
-        
-        // Wait a brief moment so the user sees the message, then continue anyway
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        motionGranted = true; // we will try anyway in case it's a false positive
-      }
-    } else {
-      motionGranted = true;
+  const clearNoEventTimer = () => {
+    if (noEventTimerRef.current !== null) {
+      window.clearTimeout(noEventTimerRef.current);
+      noEventTimerRef.current = null;
+    }
+  };
+
+  const stopCompass = () => {
+    clearNoEventTimer();
+    lastHeadingRef.current = null;
+    setMagHeadingDeg(null);
+    setStatusMsg('');
+    setIsActive(false);
+  };
+
+  const startCompass = async () => {
+    setStatusMsg('Requesting motion…');
+
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      setStatusMsg('HTTPS required for compass.');
+      return;
     }
 
-    if (!motionGranted) return;
+    const orientationCtor = (window as any).DeviceOrientationEvent as PermissionCapableCtor | undefined;
+    const motionCtor = (window as any).DeviceMotionEvent as PermissionCapableCtor | undefined;
 
-    setStatusMsg('Getting location...');
-    let locationResolved = false;
+    if (!orientationCtor) {
+      setStatusMsg('Compass unsupported on this device.');
+      return;
+    }
 
-    // 2. Request Geolocation (for accurate declination eventually, and to fulfill permission sequence)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          if (locationResolved) return;
-          locationResolved = true;
-          setStatusMsg('');
-          setIsActive(true);
-        },
-        (error) => {
-          if (locationResolved) return;
-          locationResolved = true;
-          console.error("Geolocation error:", error);
-          setStatusMsg('Location denied. Using default.');
-          // Proceed with compass anyway
-          setTimeout(() => {
-            setStatusMsg('');
-            setIsActive(true);
-          }, 1500);
-        },
-        { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }
-      );
-      
-      // Fallback timeout in case geolocation hangs without error
-      setTimeout(() => {
-        if (!locationResolved) {
-          locationResolved = true;
-          console.warn("Geolocation timed out manually.");
-          setStatusMsg('Loc timeout. Using default.');
-          setTimeout(() => {
-            setStatusMsg('');
-            setIsActive(true);
-          }, 1500);
+    try {
+      // Request BOTH sensor permissions immediately from the tap gesture. Do NOT await
+      // geolocation first — on iOS that can consume the user gesture and fail the prompt.
+      const requests: Promise<PermissionState>[] = [];
+      if (typeof orientationCtor.requestPermission === 'function') {
+        requests.push(orientationCtor.requestPermission());
+      }
+      if (typeof motionCtor?.requestPermission === 'function') {
+        requests.push(motionCtor.requestPermission());
+      }
+      if (requests.length > 0) {
+        const results = await Promise.all(requests.map((r) => r.catch(() => 'denied' as PermissionState)));
+        if (results.some((r) => r !== 'granted')) {
+          setStatusMsg(isInsideFrame() ? 'Motion blocked in preview frame.' : 'Motion permission denied.');
+          return;
         }
-      }, 3500);
-    } else {
-      setStatusMsg('');
+      }
+
+      lastHeadingRef.current = null;
+      setMagHeadingDeg(null);
       setIsActive(true);
+      setStatusMsg('Move phone to wake compass…');
+
+      clearNoEventTimer();
+      noEventTimerRef.current = window.setTimeout(() => {
+        if (lastHeadingRef.current === null) {
+          setStatusMsg(isInsideFrame() ? 'No sensor events — open as a standalone app.' : 'No compass events yet.');
+        }
+      }, 3000);
+
+      // Real magnetic declination (WMM) from location — fetched AFTER activation so a
+      // slow or denied GPS fix never blocks the compass. Leaves declination null on failure.
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            try {
+              const { latitude, longitude } = position.coords;
+              setDeclination(geomagnetism.model().point([latitude, longitude]).decl);
+            } catch (e) {
+              console.error('Declination calc failed:', e);
+            }
+          },
+          (error) => console.warn('Geolocation for declination failed:', error),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+        );
+      }
+    } catch (error) {
+      console.error('Compass permission error:', error);
+      setStatusMsg(isInsideFrame() ? 'Sensor blocked by app frame.' : 'Compass permission failed.');
     }
   };
 
   useEffect(() => {
     if (!isActive) return;
 
-    const handleOrientation = (event: any) => {
-      let mHeading = null;
-      if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
-        // iOS
-        mHeading = event.webkitCompassHeading;
-      } else if (event.alpha !== null) {
-        // Android (roughly)
-        mHeading = 360 - event.alpha;
+    const handleOrientation = (rawEvent: Event) => {
+      const event = rawEvent as IOSOrientationEvent;
+      let nextMagHeading: number | null = null;
+
+      if (typeof event.webkitCompassHeading === 'number' && Number.isFinite(event.webkitCompassHeading)) {
+        // iPhone/iPad WebKit — best real-world heading source (0 = north, clockwise).
+        nextMagHeading = normalizeDeg(event.webkitCompassHeading);
+        if (typeof event.webkitCompassAccuracy === 'number' && event.webkitCompassAccuracy > 30) {
+          setStatusMsg('CAL: move phone in a figure-8');
+        } else {
+          setStatusMsg('');
+        }
+      } else if (typeof event.alpha === 'number' && Number.isFinite(event.alpha)) {
+        // Android / other browsers — absolute alpha ≈ 360 - heading.
+        nextMagHeading = normalizeDeg(360 - event.alpha);
+        setStatusMsg('');
       }
-      
-      if (mHeading !== null) {
-        setMagHeading(mHeading);
-        // Fake declination of 12 degrees East for visual distinction between G and M
-        setHeading(mHeading - 12);
-      }
+
+      if (nextMagHeading === null) return;
+
+      const previous = lastHeadingRef.current;
+      const smoothed = previous === null ? nextMagHeading : smoothCompassDeg(previous, nextMagHeading);
+      lastHeadingRef.current = smoothed;
+      setMagHeadingDeg(smoothed);
     };
 
-    window.addEventListener('deviceorientationabsolute', handleOrientation);
-    window.addEventListener('deviceorientation', handleOrientation);
+    window.addEventListener('deviceorientationabsolute', handleOrientation as EventListener, true);
+    window.addEventListener('deviceorientation', handleOrientation as EventListener, true);
 
     return () => {
-      window.removeEventListener('deviceorientationabsolute', handleOrientation);
-      window.removeEventListener('deviceorientation', handleOrientation);
+      window.removeEventListener('deviceorientationabsolute', handleOrientation as EventListener, true);
+      window.removeEventListener('deviceorientation', handleOrientation as EventListener, true);
+      clearNoEventTimer();
     };
   }, [isActive]);
 
   if (!isActive) {
     return (
-      <div className="absolute left-1/2 -translate-x-1/2 top-4 z-50 flex flex-col items-center">
-        <button 
-          onClick={handleTap}
-          className="p-1 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors rounded-full active:bg-[var(--surface-alt)] opacity-80 hover:opacity-100"
-          title="Tap for compass"
-          aria-label="Tap for compass"
+      <div className="absolute left-1/2 top-4 z-50 flex -translate-x-1/2 flex-col items-center">
+        <button
+          type="button"
+          onClick={startCompass}
+          className="rounded-full p-1 text-[var(--text-tertiary)] opacity-80 transition-colors hover:text-[var(--text-secondary)] hover:opacity-100 active:bg-[var(--surface-alt)]"
+          title="Tap to enable compass"
+          aria-label="Tap to enable compass"
         >
           <Compass size={20} strokeWidth={2.5} />
         </button>
         {statusMsg && (
-          <div className="mt-1 text-[9px] text-[var(--text-secondary)] font-mono text-center px-2 whitespace-nowrap">
+          <div className="mt-1 max-w-[170px] whitespace-normal px-2 text-center font-mono text-[9px] leading-tight text-[var(--text-secondary)]">
             {statusMsg}
           </div>
         )}
@@ -298,42 +448,45 @@ const TopCompass = () => {
     );
   }
 
-  return (
-    <div 
-      className="absolute left-1/2 -translate-x-1/2 top-[-10px] z-50 w-[72px] h-[72px] rounded-full border-[0.5px] border-[var(--border)] bg-[var(--surface-alt)] bg-opacity-80 flex justify-center items-center cursor-pointer"
-      onClick={() => setIsActive(false)}
-      title="Tap to close compass"
-    >
-      <div className="absolute bottom-1 text-[9px] font-medium text-[var(--text-primary)] leading-none">North</div>
-      
-      <div 
-        className="absolute w-full h-full transition-transform duration-75"
-        style={{ transform: `rotate(${-heading}deg)` }}
-      >
-        {/* G Arrow */}
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 flex flex-col items-center">
-          <div className="text-[10px] font-bold leading-none mb-0.5 text-[var(--text-primary)]">G</div>
-          <div className="w-[1.5px] h-[28px] bg-[var(--text-primary)] relative">
-            <div className="absolute -top-[4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[3px] border-r-[3px] border-b-[5px] border-l-transparent border-r-transparent border-b-[var(--text-primary)]"></div>
-          </div>
-        </div>
-      </div>
-      
-      <div 
-        className="absolute w-full h-full transition-transform duration-75"
-        style={{ transform: `rotate(${-magHeading}deg)` }}
-      >
-        {/* M Arrow */}
-        <div className="absolute top-[10px] left-1/2 -translate-x-1/2 flex flex-col items-center origin-bottom" style={{ transform: 'rotate(12deg)' }}>
-          <div className="text-[10px] font-bold leading-none mb-0.5 text-[var(--text-primary)]">M</div>
-          <div className="w-[1.5px] h-[24px] bg-[var(--text-primary)] relative">
-            <div className="absolute -top-[4px] left-1/2 -translate-x-1/2 w-0 h-0 border-l-[3px] border-r-[3px] border-b-[5px] border-l-transparent border-r-transparent border-b-[var(--text-primary)]"></div>
-          </div>
-        </div>
-      </div>
+  // "G" arrow = grid/true north, corrected by the real WMM declination (East positive).
+  // declination ≈ the map's G-M angle (ignores small UTM grid convergence — see to-dos).
+  const gm = declination ?? 0;
+  const magneticNorthRotation = magHeadingDeg === null ? gm : -magHeadingDeg;
+  const gridNorthRotation = magHeadingDeg === null ? 0 : -(magHeadingDeg + gm);
 
-      {/* Center dot */}
-      <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] z-10"></div>
+  const magDisplay =
+    magHeadingDeg === null
+      ? '---°M'
+      : `${Math.round(normalizeDeg(magHeadingDeg)).toString().padStart(3, '0')}°M`;
+  const gmDisplay =
+    declination === null ? 'G-M --' : `G-M ${Math.abs(Math.round(declination))}°${declination >= 0 ? 'E' : 'W'}`;
+
+  return (
+    <div className="absolute left-1/2 top-[-12px] z-50 flex -translate-x-1/2 flex-col items-center">
+      <button
+        type="button"
+        onClick={stopCompass}
+        className="relative h-[86px] w-[86px] rounded-full border border-[var(--border)] bg-[var(--surface-alt)] shadow-sm"
+        title="Tap to close compass"
+        aria-label="Tap to close compass"
+      >
+        <CompassArrow label="G" rotationDeg={gridNorthRotation} color="var(--text-primary)" length={33} />
+        <CompassArrow label="M" rotationDeg={magneticNorthRotation} color="var(--accent-red)" length={28} />
+
+        <div className="absolute left-1/2 top-1/2 z-10 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--text-primary)]" />
+
+        <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[8px] font-bold leading-none text-[var(--text-primary)]">
+          {magDisplay}
+        </div>
+        <div className="absolute bottom-[-10px] left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[7px] font-bold leading-none text-[var(--text-tertiary)]">
+          {gmDisplay}
+        </div>
+      </button>
+      {statusMsg && (
+        <div className="mt-3 max-w-[180px] whitespace-normal px-2 text-center font-mono text-[8px] leading-tight text-[var(--text-secondary)]">
+          {statusMsg}
+        </div>
+      )}
     </div>
   );
 };
@@ -421,17 +574,14 @@ const useDictation = (onResult: (text: string) => void) => {
 };
 
 const InlineNotes = ({ id, label }: { id: string, label: string }) => {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => localStorage.getItem(`inline-note-${id}`) || '');
 
   useEffect(() => {
-    const saved = localStorage.getItem(`inline-note-${id}`);
-    if (saved) setText(saved);
-
     const handleInsert = (e: any) => {
       if (e.detail.id === id) {
         setText(prev => {
           const newText = prev ? `${prev}\n${e.detail.text}` : e.detail.text;
-          localStorage.setItem(`inline-note-${id}`, newText);
+          safeSetItem(`inline-note-${id}`, newText);
           return newText;
         });
       }
@@ -442,21 +592,21 @@ const InlineNotes = ({ id, label }: { id: string, label: string }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    localStorage.setItem(`inline-note-${id}`, e.target.value);
+    safeSetItem(`inline-note-${id}`, e.target.value);
   };
 
   const handleQuickFill = () => {
     if (TEMPLATES[id]) {
       const newText = text ? `${text}\n\n${TEMPLATES[id]}` : TEMPLATES[id];
       setText(newText);
-      localStorage.setItem(`inline-note-${id}`, newText);
+      safeSetItem(`inline-note-${id}`, newText);
     }
   };
 
   const handleDictationResult = (transcript: string) => {
     setText(prev => {
       const newText = prev ? `${prev} ${transcript}` : transcript;
-      localStorage.setItem(`inline-note-${id}`, newText);
+      safeSetItem(`inline-note-${id}`, newText);
       return newText;
     });
   };
@@ -497,22 +647,17 @@ const InlineNotes = ({ id, label }: { id: string, label: string }) => {
 };
 
 const NotesBlock = ({ sectionKey }: { sectionKey: string }) => {
-  const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    const saved = localStorage.getItem(`notes-${sectionKey}`);
-    if (saved) setNotes(saved);
-  }, [sectionKey]);
+  const [notes, setNotes] = useState(() => localStorage.getItem(`notes-${sectionKey}`) || '');
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNotes(e.target.value);
-    localStorage.setItem(`notes-${sectionKey}`, e.target.value);
+    safeSetItem(`notes-${sectionKey}`, e.target.value);
   };
 
   const handleDictationResult = (transcript: string) => {
     setNotes(prev => {
       const newText = prev ? `${prev} ${transcript}` : transcript;
-      localStorage.setItem(`notes-${sectionKey}`, newText);
+      safeSetItem(`notes-${sectionKey}`, newText);
       return newText;
     });
   };
@@ -547,8 +692,8 @@ export default function App() {
   const [view, setView] = useState<'smeac' | 'mettt' | 'tools'>('smeac');
   const [timeL, setTimeL] = useState('0947L');
   const [timeZ, setTimeZ] = useState('1747Z');
-  const [showToast, setShowToast] = useState(false);
-  const [isBlackoutMode, setIsBlackoutMode] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null);
+  const [isBlackoutMode, setIsBlackoutMode] = useLocalStorage<boolean>('blackout-mode', false);
 
   useEffect(() => {
     if (isBlackoutMode) {
@@ -557,6 +702,18 @@ export default function App() {
       document.documentElement.removeAttribute('data-theme');
     }
   }, [isBlackoutMode]);
+
+  useEffect(() => {
+    const handler = (e: any) => setToast({ msg: e.detail.msg, type: e.detail.type || 'success' });
+    window.addEventListener('app-toast', handler);
+    return () => window.removeEventListener('app-toast', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const toggleBlackoutMode = () => {
     setIsBlackoutMode(!isBlackoutMode);
@@ -630,12 +787,16 @@ export default function App() {
 
   const handleShare = () => {
     const text = generateExportText();
-    navigator.clipboard.writeText(text).then(() => {
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
-    }).catch(err => {
-      console.error('Failed to copy', err);
-    });
+    if (!navigator.clipboard) {
+      notify('Clipboard unavailable — needs a secure (https) context', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => notify('COPIED TO CLIPBOARD', 'success'))
+      .catch(err => {
+        console.error('Failed to copy', err);
+        notify('Copy failed — check clipboard permissions', 'error');
+      });
   };
 
   const handleExportPDF = () => {
@@ -845,8 +1006,8 @@ export default function App() {
 
   return (
     <div className="iphone-frame">
-      <div className={`absolute top-20 left-1/2 -translate-x-1/2 bg-[var(--text-primary)] text-[var(--bg)] text-[11px] font-bold tracking-wider px-4 py-2 rounded-full z-[200] transition-opacity duration-300 pointer-events-none ${showToast ? 'opacity-100' : 'opacity-0'}`}>
-        COPIED TO CLIPBOARD
+      <div className={`absolute top-20 left-1/2 -translate-x-1/2 ${toast?.type === 'error' ? 'bg-[var(--accent-red)] text-white' : 'bg-[var(--text-primary)] text-[var(--bg)]'} text-[11px] font-bold tracking-wider px-4 py-2 rounded-full z-[200] transition-opacity duration-300 pointer-events-none max-w-[85%] text-center ${toast ? 'opacity-100' : 'opacity-0'}`}>
+        {toast?.msg}
       </div>
       <div className="notch"></div>
       <div className="status-bar items-start mt-1">
@@ -912,38 +1073,7 @@ export default function App() {
               <LeafItem letter="PL" text={
                 <div className="flex justify-between items-start">
                   <span><strong>Present Location</strong> — Where we are now (Grid/Terrain Feature)</span>
-                  <button 
-                    onClick={() => {
-                      if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                          (position) => {
-                            const { latitude, longitude } = position.coords;
-                            try {
-                              const grid = mgrs.forward([longitude, latitude], 5);
-                              let formattedGrid = grid;
-                              if (grid.length === 15) {
-                                formattedGrid = `${grid.substring(0, 3)} ${grid.substring(3, 5)} ${grid.substring(5, 10)} ${grid.substring(10, 15)}`;
-                              } else if (grid.length === 14) {
-                                formattedGrid = `${grid.substring(0, 2)} ${grid.substring(2, 4)} ${grid.substring(4, 9)} ${grid.substring(9, 14)}`;
-                              }
-                              window.dispatchEvent(new CustomEvent('insert-note', { detail: { id: 'osmeac-o', text: `Present Location: ${formattedGrid}` }}));
-                            } catch (e) {
-                              console.error(e);
-                            }
-                          },
-                          (err) => {
-                            console.error(err);
-                            alert("Failed to get location. Please ensure location services are enabled and permissions are granted.");
-                          }
-                        );
-                      } else {
-                        alert("Geolocation is not supported by this browser.");
-                      }
-                    }}
-                    className="ml-2 mt-0.5 shrink-0 bg-[var(--text-secondary)] text-[var(--bg)] text-[9px] font-bold px-2 py-1 rounded active:bg-[var(--text-primary)] hover:bg-[var(--text-tertiary)] transition-colors"
-                  >
-                    GET GRID
-                  </button>
+                  <GetGridButton />
                 </div>
               } />
               <LeafItem letter="DOA" text={<span><strong>Direction of Attack</strong> — Cardinal direction (North, NE, etc.)</span>} />
