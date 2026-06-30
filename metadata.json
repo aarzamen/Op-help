@@ -1,0 +1,6 @@
+{
+  "name": "OPORD Analyst",
+  "description": "Tactical leadership tool for Five Paragraph Orders (SMEAC) and mission analysis.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
