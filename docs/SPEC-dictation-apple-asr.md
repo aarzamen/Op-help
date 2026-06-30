@@ -57,6 +57,16 @@ This is a **significant scope addition**, not a code tweak:
 - Decide whether the native wrapper loads a **bundled** copy of the build (true offline)
   or a **hosted** URL (needs network for the UI). For field use, bundle it.
 
+**Update — the native host already exists: Appifier.** The maintainer's `appifier` tool
+wraps a Vite/React build (including Google AI Studio exports) into a **development-signed
+iOS `.ipa`** via a parameterized `WKWebView` template (`ios-template/`), and it already
+solves the `file://` null-origin gotcha by **inlining** the built entry JS/CSS (WKWebView
+won't execute external ES-module scripts under `file://`). So the build/sign/install
+pipeline is **not** new work — what remains is adding a Swift **speech bridge** to
+Appifier's iOS template (Phase 2), plus the Phase 1 adapter in this repo. This materially
+lowers the cost of the native path; it also surfaces WKWebView caveats that affect
+existing features (§3b).
+
 ## 3. Architecture decision — keep the React app, swap the engine
 
 The single most important design point (and the one GPT got right): **replace the
@@ -80,25 +90,47 @@ Detection: `AppleBridgeProvider` is selected iff
 shell); otherwise fall back to `WebSpeechProvider`. **Never remove the web fallback** —
 it's what keeps AI Studio + browsers working.
 
-### 3a. Native host: raw WKWebView vs Capacitor (recommendation)
+### 3a. Native host: use Appifier (the in-house tool)
 
-Two ways to build the native shell:
+The maintainer already owns **Appifier**, which produces a dev-signed iOS WKWebView
+wrapper from this exact kind of Vite/React build and handles `file://` inlining +
+signing + on-device install (`devicectl`). **Use it as the native host** rather than
+standing up Capacitor or a hand-rolled Xcode project:
 
-- **Raw WKWebView host** (GPT's skeleton): a hand-written `UIViewController` that owns a
-  `WKWebView`, a `WKUserContentController`, and the `OPORDSpeechBridge`
-  (`WKScriptMessageHandler`). Minimal deps, maximal control, more boilerplate (loading
-  the bundle, lifecycle, signing wiring all by hand).
-- **Capacitor** (recommended): wraps the existing Vite build into an iOS app and gives
-  you the WKWebView + a typed JS↔Swift bridge **for free**. The Speech bridge becomes a
-  small **Capacitor plugin** (`@capacitor/core` on the JS side, a Swift `CAPPlugin` on
-  the native side) instead of hand-rolled message handlers. Less boilerplate, a
-  conventional `npx cap add ios` / `npx cap sync` workflow, and it leaves a clean path
-  to Android later. Cost: one build-tooling dependency.
+- The JS↔Swift bridge lives in Appifier's `ios-template/` WKWebView host: register a
+  `WKScriptMessageHandler` named `opordSpeech` and the `OPORDSpeechBridge` (§6). Add it
+  as an **optional, generic "speech bridge"** to the template so every app Appifier wraps
+  benefits, not just this one.
+- Capacitor / raw-WKWebView remain fallback options if Appifier isn't on the build
+  machine, but they duplicate what Appifier already does.
 
-**Recommendation:** Capacitor, unless the maintainer wants zero added tooling. The Swift
-Speech logic is identical either way; only the bridge plumbing differs. The rest of this
-spec uses the raw-WKWebView message names (`opordSpeech` / `opord-asr-result`) because
-they're provider-agnostic; a Capacitor plugin would expose the same logical events.
+The bridge contract (`opordSpeech` / `opord-asr-result`) is host-agnostic and applies
+unchanged regardless of which wrapper is used.
+
+### 3b. WKWebView / `file://` caveats — they affect existing features, not just dictation
+
+Wrapping this app in a WKWebView (Appifier or otherwise) changes the runtime in ways that
+touch features already shipped in Milestone A. Verify/handle these when the native build
+is attempted:
+
+- **Web Speech is unavailable in WKWebView.** Inside an Appified build the browser
+  dictation fallback is effectively a **no-op** — so the native ASR bridge isn't just
+  preferred there, it's **required** for dictation to work at all. (On plain web it stays
+  the fallback.)
+- **`navigator.geolocation` needs native authorization.** WKWebView only exposes
+  geolocation if the host app holds location permission and declares
+  `NSLocationWhenInUseUsageDescription`. If Appifier's template doesn't already grant it,
+  the **compass declination and GET GRID MGRS break** in the wrapped app — add a
+  `CLLocationManager → JS` shim to the template (generic and reusable).
+- **DeviceOrientation:** confirm motion events flow under the wrapper and that the
+  permission model (no Safari-style `requestPermission` prompt) is handled — the compass
+  depends on it.
+- **`navigator.clipboard` under `file://`** may be restricted; the copy-to-clipboard
+  export may then need a native bridge too (the shared `notify` already reports failures).
+
+Net: the highest-leverage move is to grow Appifier's iOS template with a small set of
+**generic native bridges** (speech, geolocation, clipboard). This app then "just works"
+wrapped — and so does the next one.
 
 ## 4. Phasing
 
@@ -115,10 +147,11 @@ Do this in order. **Phase 1 ships in the current web repo today and de-risks eve
   to today. Independently testable with a mocked bridge. *This is the only phase that
   touches this repo.*
 
-- **Phase 2 — Native iOS shell + Apple Speech bridge.**
-  New iOS project (Capacitor or raw WKWebView). Implement `OPORDSpeechBridge` with the
-  Speech framework. Wire Info.plist usage strings. This lives in a **native project**
-  (likely a sibling repo or an `ios/` directory), not the React `src/`.
+- **Phase 2 — Apple Speech bridge in Appifier's iOS template.**
+  Add `OPORDSpeechBridge` (Speech framework) + the `opordSpeech` message handler to
+  Appifier's `ios-template/` WKWebView host, with the Info.plist usage strings (and
+  likely the geolocation/clipboard bridges from §3b). This lives in the **appifier** repo
+  (out of this repo's scope), not the React `src/`.
 
 - **Phase 3 — Foundation Models post-processing (optional, later).**
   A *second*, separate bridge (`opordFoundationModel`) that takes a **final transcript
@@ -217,13 +250,14 @@ Surface a visible diff (raw vs cleaned) so the operator can verify nothing was i
 
 ## 8. Open decisions for the maintainer
 
-1. **Commit to native?** This adds an iOS project, an Apple Developer account, signing,
-   and a second distribution path. Confirm before Phase 2. (Phase 1 is safe regardless.)
-2. **Capacitor vs raw WKWebView** (§3a) — recommend Capacitor.
-3. **Bundled vs hosted web build** in the wrapper — recommend bundled (offline).
-4. **On-device-only as the default** (recommend yes for OPSEC), with an explicit,
-   visible opt-in if the user ever wants cloud recognition for accuracy.
-5. Distribution: TestFlight, ad-hoc, or MDM?
+1. **Native host:** use **Appifier** (decided — it already builds the dev-signed iOS
+   WKWebView wrapper and handles `file://` inlining). Remaining work is extending its
+   `ios-template/` with the speech bridge (and likely the geolocation/clipboard bridges
+   per §3b). Still needs Xcode + an Apple signing identity on the build machine.
+2. **On-device-only as the default** (recommend yes for OPSEC), with an explicit, visible
+   opt-in if cloud recognition is ever wanted for accuracy.
+3. **Distribution** stays Appifier's dev-signed / `devicectl` install (personal device);
+   a broader channel (TestFlight/MDM) is out of scope for now.
 
 ## 9. Acceptance criteria
 
