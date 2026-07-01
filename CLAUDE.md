@@ -55,6 +55,8 @@ vite.config.ts      # Vite/Tailwind config
 eslint.config.js    # flat ESLint config
 .github/workflows/ci.yml    # CI: typecheck + lint + build
 docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration
+docs/SPEC-dictation-apple-asr.md   # downstream spec: provider-agnostic ASR + Apple-native backend
+docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardening / roadmap)
 ```
 
 ## Architecture & conventions (read before editing)
@@ -129,6 +131,10 @@ docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration
       `any`).
 
 ### Remaining issues — roughly highest-impact first
+
+> Expanded, implementable specs: [`docs/SPEC-framework-hardening.md`](docs/SPEC-framework-hardening.md)
+> (Milestones B–E) and [`docs/SPEC-dictation-apple-asr.md`](docs/SPEC-dictation-apple-asr.md)
+> (provider-agnostic dictation + optional Apple on-device ASR).
 
 **Robustness / data**
 - [ ] **Edited checklists are never exported.** Copy/PDF for the TOOLS view only emit
