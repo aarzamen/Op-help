@@ -26,6 +26,36 @@ function safeSetItem(key: string, value: string): boolean {
   }
 }
 
+/**
+ * Registry of every PCC/PCI checklist's storage key, grouped by scenario, so the
+ * exporters (below) can include user-edited checklist items without duplicating the
+ * scenario/label strings that also live in the TOOLS tab JSX.
+ */
+const CHECKLISTS: { storageKey: string; label: string; scenario: string }[] = [
+  { storageKey: 'pcc-convoy-gear', label: 'Gear (PCC)', scenario: 'Convoy' },
+  { storageKey: 'pci-convoy-people', label: 'People (PCI)', scenario: 'Convoy' },
+  { storageKey: 'pcc-mission-gear', label: 'Gear (PCC)', scenario: 'Executing a Mission' },
+  { storageKey: 'pci-mission-people', label: 'People (PCI)', scenario: 'Executing a Mission' },
+  { storageKey: 'pcc-generic-gear', label: 'Gear (PCC)', scenario: 'Generic / Any Tasking' },
+  { storageKey: 'pci-generic-people', label: 'People (PCI)', scenario: 'Generic / Any Tasking' },
+];
+
+/** Reads a checklist's item text, tolerating both the legacy string[] and current {id,text}[] shapes. */
+function getChecklistItemTexts(storageKey: string): string[] {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => (typeof entry === 'string' ? entry : (entry?.text ?? '')))
+      .filter((text): text is string => Boolean(text));
+  } catch (e) {
+    console.error('Failed to read checklist', storageKey, e);
+    return [];
+  }
+}
+
 // --- Components ---
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
@@ -54,34 +84,70 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
   return [storedValue, setValue];
 }
 
+interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
+function newChecklistItemId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `item-${crypto.randomUUID()}`;
+  }
+  // Fallback for contexts where crypto.randomUUID is unavailable (e.g. some file:// hosts).
+  return `item-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+/** Migrate legacy string[] checklist storage to {id,text}[]. Idempotent. */
+function normalizeChecklistItems(parsed: unknown, fallback: string[]): ChecklistItem[] {
+  const source: unknown[] = Array.isArray(parsed) ? parsed : fallback;
+  return source.map((entry) =>
+    typeof entry === 'string' ? { id: newChecklistItemId(), text: entry } : (entry as ChecklistItem)
+  );
+}
+
 const EditableChecklist = ({ storageKey, initialItems, title }: { storageKey: string, initialItems: string[], title: string }) => {
-  const [items, setItems] = useLocalStorage(storageKey, initialItems);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [items, setItems] = useState<ChecklistItem[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      const normalized = normalizeChecklistItems(parsed, initialItems);
+      const migratedFromStrings = Array.isArray(parsed) && parsed.some((e) => typeof e === 'string');
+      if (raw === null || migratedFromStrings) {
+        safeSetItem(storageKey, JSON.stringify(normalized));
+      }
+      return normalized;
+    } catch (e) {
+      console.error(e);
+      return initialItems.map((text) => ({ id: newChecklistItemId(), text }));
+    }
+  });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [newItemValue, setNewItemValue] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  const handleDelete = (index: number) => {
-    const newItems = [...items];
-    newItems.splice(index, 1);
-    setItems(newItems);
+  const persist = (next: ChecklistItem[]) => {
+    setItems(next);
+    safeSetItem(storageKey, JSON.stringify(next));
   };
 
-  const handleEdit = (index: number, val: string) => {
-    setEditingIndex(index);
+  const handleDelete = (id: string) => {
+    persist(items.filter((item) => item.id !== id));
+  };
+
+  const handleEdit = (id: string, val: string) => {
+    setEditingId(id);
     setEditValue(val);
   };
 
-  const saveEdit = (index: number) => {
-    const newItems = [...items];
-    newItems[index] = editValue;
-    setItems(newItems);
-    setEditingIndex(null);
+  const saveEdit = (id: string) => {
+    persist(items.map((item) => (item.id === id ? { ...item, text: editValue } : item)));
+    setEditingId(null);
   };
 
   const handleAdd = () => {
     if (newItemValue.trim()) {
-      setItems([...items, newItemValue.trim()]);
+      persist([...items, { id: newChecklistItemId(), text: newItemValue.trim() }]);
       setNewItemValue("");
       setIsAdding(false);
     }
@@ -91,28 +157,28 @@ const EditableChecklist = ({ storageKey, initialItems, title }: { storageKey: st
     <div className="mt-4 mb-2">
       <div className="font-bold text-[11px] text-[var(--text-secondary)] mb-2 uppercase tracking-wider">{title}</div>
       <ul className="space-y-2">
-        {items.map((item: string, idx: number) => (
-          <li key={idx} className="flex gap-2 items-start text-[10px] text-[var(--text-primary)]">
+        {items.map((item) => (
+          <li key={item.id} className="flex gap-2 items-start text-[10px] text-[var(--text-primary)]">
             <div className="w-1.5 h-1.5 mt-1 rounded-full bg-[var(--text-secondary)] shrink-0" />
             <div className="flex-1 min-w-0">
-              {editingIndex === idx ? (
+              {editingId === item.id ? (
                 <div className="flex flex-col gap-1">
-                  <textarea 
+                  <textarea
                     className="w-full bg-[var(--surface-alt)] text-[var(--text-primary)] border border-[var(--border)] p-1 rounded text-[10px] resize-none h-16 focus:outline-none focus:border-[var(--accent-blue)]"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                   />
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => setEditingIndex(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"><X size={12} /></button>
-                    <button onClick={() => saveEdit(idx)} className="text-[var(--accent-green)] hover:text-green-400"><Check size={12} /></button>
+                    <button onClick={() => setEditingId(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"><X size={12} /></button>
+                    <button onClick={() => saveEdit(item.id)} className="text-[var(--accent-green)] hover:text-green-400"><Check size={12} /></button>
                   </div>
                 </div>
               ) : (
                 <div className="flex justify-between gap-2 group">
-                  <span className="leading-tight">{item}</span>
+                  <span className="leading-tight">{item.text}</span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(idx, item)} className="text-[var(--text-tertiary)] hover:text-[var(--accent-blue)]" title="Edit item"><Edit2 size={10} /></button>
-                    <button onClick={() => handleDelete(idx)} className="text-[var(--text-tertiary)] hover:text-[var(--accent-red)]" title="Delete item"><Trash2 size={10} /></button>
+                    <button onClick={() => handleEdit(item.id, item.text)} className="text-[var(--text-tertiary)] hover:text-[var(--accent-blue)]" title="Edit item"><Edit2 size={10} /></button>
+                    <button onClick={() => handleDelete(item.id)} className="text-[var(--text-tertiary)] hover:text-[var(--accent-red)]" title="Delete item"><Trash2 size={10} /></button>
                   </div>
                 </div>
               )}
@@ -782,7 +848,27 @@ export default function App() {
       }
     } else {
       const notes = localStorage.getItem('notes-tools') || '';
-      text = `TACTICAL TOOLS\n\n--- NOTES ---\n${notes || 'No notes provided.'}`;
+      text = 'TACTICAL TOOLS\n\n';
+
+      text += '--- PCC / PCI CHECKLISTS ---\n\n';
+      const scenarios = Array.from(new Set(CHECKLISTS.map((c) => c.scenario)));
+      scenarios.forEach((scenario) => {
+        text += `${scenario.toUpperCase()}\n`;
+        CHECKLISTS.filter((c) => c.scenario === scenario).forEach((c) => {
+          const checklistItems = getChecklistItemTexts(c.storageKey);
+          text += `  ${c.label}:\n`;
+          if (checklistItems.length === 0) {
+            text += `    [No items]\n`;
+          } else {
+            checklistItems.forEach((item) => {
+              text += `    - ${item}\n`;
+            });
+          }
+        });
+        text += '\n';
+      });
+
+      text += `--- NOTES ---\n${notes || 'No notes provided.'}`;
     }
     return text;
   };
