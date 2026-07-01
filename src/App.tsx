@@ -27,17 +27,32 @@ function safeSetItem(key: string, value: string): boolean {
 }
 
 /**
- * Registry of every PCC/PCI checklist's storage key, grouped by scenario, so the
- * exporters (below) can include user-edited checklist items without duplicating the
- * scenario/label strings that also live in the TOOLS tab JSX.
+ * Single source of truth for every PCC/PCI checklist's storage key. Referenced both by
+ * the CHECKLISTS export registry below and by the storageKey prop on each
+ * <EditableChecklist> in the TOOLS tab JSX, so a rename can't silently desync the two
+ * (it becomes a compile error instead of every checklist exporting "[No items]").
+ */
+const CHECKLIST_KEYS = {
+  convoyGear: 'pcc-convoy-gear',
+  convoyPeople: 'pci-convoy-people',
+  missionGear: 'pcc-mission-gear',
+  missionPeople: 'pci-mission-people',
+  genericGear: 'pcc-generic-gear',
+  genericPeople: 'pci-generic-people',
+} as const;
+
+/**
+ * Registry of every PCC/PCI checklist, grouped by scenario, so the exporters (below)
+ * can include user-edited checklist items without duplicating the scenario/label
+ * strings that also live in the TOOLS tab JSX.
  */
 const CHECKLISTS: { storageKey: string; label: string; scenario: string }[] = [
-  { storageKey: 'pcc-convoy-gear', label: 'Gear (PCC)', scenario: 'Convoy' },
-  { storageKey: 'pci-convoy-people', label: 'People (PCI)', scenario: 'Convoy' },
-  { storageKey: 'pcc-mission-gear', label: 'Gear (PCC)', scenario: 'Executing a Mission' },
-  { storageKey: 'pci-mission-people', label: 'People (PCI)', scenario: 'Executing a Mission' },
-  { storageKey: 'pcc-generic-gear', label: 'Gear (PCC)', scenario: 'Generic / Any Tasking' },
-  { storageKey: 'pci-generic-people', label: 'People (PCI)', scenario: 'Generic / Any Tasking' },
+  { storageKey: CHECKLIST_KEYS.convoyGear, label: 'Gear (PCC)', scenario: 'Convoy' },
+  { storageKey: CHECKLIST_KEYS.convoyPeople, label: 'People (PCI)', scenario: 'Convoy' },
+  { storageKey: CHECKLIST_KEYS.missionGear, label: 'Gear (PCC)', scenario: 'Executing a Mission' },
+  { storageKey: CHECKLIST_KEYS.missionPeople, label: 'People (PCI)', scenario: 'Executing a Mission' },
+  { storageKey: CHECKLIST_KEYS.genericGear, label: 'Gear (PCC)', scenario: 'Generic / Any Tasking' },
+  { storageKey: CHECKLIST_KEYS.genericPeople, label: 'People (PCI)', scenario: 'Generic / Any Tasking' },
 ];
 
 /** Reads a checklist's item text, tolerating both the legacy string[] and current {id,text}[] shapes. */
@@ -97,12 +112,25 @@ function newChecklistItemId(): string {
   return `item-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** Migrate legacy string[] checklist storage to {id,text}[]. Idempotent. */
+/**
+ * Migrate legacy string[] checklist storage to {id,text}[] and validate deserialized
+ * objects at runtime (a TS assertion alone wouldn't catch a corrupted/hand-edited entry
+ * missing `id` — which would break delete/edit: handleDelete(undefined) would remove
+ * every valid item instead of one, and items sharing `undefined` ids would co-edit).
+ * Idempotent.
+ */
 function normalizeChecklistItems(parsed: unknown, fallback: string[]): ChecklistItem[] {
   const source: unknown[] = Array.isArray(parsed) ? parsed : fallback;
-  return source.map((entry) =>
-    typeof entry === 'string' ? { id: newChecklistItemId(), text: entry } : (entry as ChecklistItem)
-  );
+  return source.map((entry) => {
+    if (typeof entry === 'string') {
+      return { id: newChecklistItemId(), text: entry };
+    }
+    const candidate = entry as Partial<ChecklistItem> | null | undefined;
+    return {
+      id: typeof candidate?.id === 'string' && candidate.id ? candidate.id : newChecklistItemId(),
+      text: typeof candidate?.text === 'string' ? candidate.text : '',
+    };
+  });
 }
 
 const EditableChecklist = ({ storageKey, initialItems, title }: { storageKey: string, initialItems: string[], title: string }) => {
@@ -1395,7 +1423,7 @@ export default function App() {
 
               <SubBlock theme="blue" letter="C" name="Convoy">
                 <EditableChecklist 
-                  storageKey="pcc-convoy-gear" 
+                  storageKey={CHECKLIST_KEYS.convoyGear} 
                   title="Gear (PCC)"
                   initialItems={[
                     "Vehicles dispatched, fluids/tires checked, no deadline issues; recovery vehicle and tow straps/chains staged",
@@ -1409,7 +1437,7 @@ export default function App() {
                   ]} 
                 />
                 <EditableChecklist 
-                  storageKey="pci-convoy-people" 
+                  storageKey={CHECKLIST_KEYS.convoyPeople} 
                   title="People (PCI)"
                   initialItems={[
                     "Every driver/A-driver/gunner briefed on route, order of march, speeds, intervals, and the SP/RP times",
@@ -1427,7 +1455,7 @@ export default function App() {
 
               <SubBlock theme="red" letter="M" name="Executing a Mission">
                 <EditableChecklist 
-                  storageKey="pcc-mission-gear" 
+                  storageKey={CHECKLIST_KEYS.missionGear} 
                   title="Gear (PCC)"
                   initialItems={[
                     "CESE for the task dispatched and PMCS'd; MHE/crane inspected, rigging gear (slings, shackles) inspected and rated",
@@ -1440,7 +1468,7 @@ export default function App() {
                   ]} 
                 />
                 <EditableChecklist 
-                  storageKey="pci-mission-people" 
+                  storageKey={CHECKLIST_KEYS.missionPeople} 
                   title="People (PCI)"
                   initialItems={[
                     "Every Seabee can state the mission, their task, and the commander's intent",
@@ -1458,7 +1486,7 @@ export default function App() {
               <SubBlock theme="amber" letter="G" name="Generic / Any Tasking">
                 <div className="info-text">The mnemonic that travels: <strong>METT-SLANT</strong> mindset, but for checks just run <strong>gear → security → comms → med → people</strong>.</div>
                 <EditableChecklist 
-                  storageKey="pcc-generic-gear" 
+                  storageKey={CHECKLIST_KEYS.genericGear} 
                   title="Gear (PCC)"
                   initialItems={[
                     "Sensitive items — weapons, optics, comms, NVDs, crypto — inventoried by serial, before and after",
@@ -1468,7 +1496,7 @@ export default function App() {
                   ]} 
                 />
                 <EditableChecklist 
-                  storageKey="pci-generic-people" 
+                  storageKey={CHECKLIST_KEYS.genericPeople} 
                   title="People (PCI)"
                   initialItems={[
                     "Every individual can state: the mission, their job in it, and what to do when it goes wrong",
