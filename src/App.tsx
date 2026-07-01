@@ -541,9 +541,13 @@ const useDictation = (onResult: (text: string) => void) => {
       const detail = event.detail;
       if (!detail || detail.targetId !== targetId) return;
       if (detail.type === 'status') {
-        setDictationStatus(detail.message || detail.status || '');
         if (detail.status === 'stopped' || (detail.status ?? '').endsWith('denied')) {
+          // 'stopped' also fires in response to our own explicit stop, which already
+          // clears the status — don't flash it back on afterward.
           setIsDictating(false);
+          setDictationStatus('');
+        } else {
+          setDictationStatus(detail.message || detail.status || '');
         }
         return;
       }
@@ -588,8 +592,14 @@ const useDictation = (onResult: (text: string) => void) => {
 
       rec.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
-        setDictationStatus(event.error || 'speech error');
+        const message = event.error || 'speech error';
+        setDictationStatus(message);
         setIsDictating(false);
+        // Auto-clear so a stale error doesn't sit under the DICTATE button forever;
+        // only clear if nothing newer has already replaced this message.
+        setTimeout(() => {
+          setDictationStatus((current) => (current === message ? '' : current));
+        }, 4000);
       };
 
       rec.onend = () => {
