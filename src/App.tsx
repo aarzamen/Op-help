@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { Share2, Download, Mic, MicOff, Moon, Compass, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import * as mgrs from 'mgrs';
@@ -512,23 +512,68 @@ const TEMPLATES: Record<string, string> = {
   'mettt-time': 'Planning Factors Timeline:\n- Admin/Logistics (hrs):\n- Actions on Objective (mins):\n\nKey Times:\n- NLT:\n- Step Off:\n- Actions On:'
 };
 
+const hasNativeAppleSpeech = () =>
+  typeof window !== 'undefined' && !!window.webkit?.messageHandlers?.opordSpeech;
+
+/**
+ * Provider-agnostic dictation. Uses the native Apple-Speech bridge when running inside a
+ * WKWebView host (`window.webkit.messageHandlers.opordSpeech`), otherwise falls back to
+ * the browser Web Speech API. Each hook instance owns a stable `targetId` so multiple
+ * DICTATE buttons don't cross-wire. See docs/SPEC-dictation-apple-asr.md.
+ */
 const useDictation = (onResult: (text: string) => void) => {
   const [isDictating, setIsDictating] = useState(false);
+  const [dictationStatus, setDictationStatus] = useState('');
   const recognitionRef = useRef<any>(null);
   const onResultRef = useRef(onResult);
+  // Stable, unique id per hook instance (React.useId) so multiple DICTATE buttons don't
+  // cross-wire native-bridge events. No RNG needed (works under file:// in a WKWebView).
+  const targetId = `dictation${useId()}`;
 
   useEffect(() => {
     onResultRef.current = onResult;
   }, [onResult]);
 
+  // Native Apple-ASR bridge: only fires inside a WKWebView host. Ignore events addressed
+  // to another hook instance (targetId).
   useEffect(() => {
-    // @ts-ignore
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const handleNative = (event: WindowEventMap['opord-asr-result']) => {
+      const detail = event.detail;
+      if (!detail || detail.targetId !== targetId) return;
+      if (detail.type === 'status') {
+        setDictationStatus(detail.message || detail.status || '');
+        if (detail.status === 'stopped' || (detail.status ?? '').endsWith('denied')) {
+          setIsDictating(false);
+        }
+        return;
+      }
+      if (detail.type === 'transcript') {
+        if (detail.isFinal && detail.text) {
+          onResultRef.current(detail.text);
+          setDictationStatus('');
+          setIsDictating(false);
+        } else {
+          setDictationStatus('Listening…');
+        }
+      }
+    };
+    window.addEventListener('opord-asr-result', handleNative);
+    return () => window.removeEventListener('opord-asr-result', handleNative);
+  }, [targetId]);
+
+  // Browser Web Speech fallback — skipped when the native bridge is present.
+  useEffect(() => {
+    if (hasNativeAppleSpeech()) return;
+    const w = window as Window & {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    };
+    const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
       rec.continuous = true;
       rec.interimResults = false;
-      
+
       rec.onresult = (event: any) => {
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -543,6 +588,7 @@ const useDictation = (onResult: (text: string) => void) => {
 
       rec.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
+        setDictationStatus(event.error || 'speech error');
         setIsDictating(false);
       };
 
@@ -555,24 +601,44 @@ const useDictation = (onResult: (text: string) => void) => {
   }, []);
 
   const toggleDictation = () => {
+    // Native Apple-Speech bridge path (inside a WKWebView host).
+    if (hasNativeAppleSpeech()) {
+      const handler = window.webkit!.messageHandlers!.opordSpeech!;
+      if (isDictating) {
+        handler.postMessage({ command: 'stop', targetId });
+        setIsDictating(false);
+        setDictationStatus('');
+      } else {
+        handler.postMessage({ command: 'start', targetId, onDeviceOnly: true });
+        setIsDictating(true);
+        setDictationStatus('Requesting speech…');
+      }
+      return;
+    }
+
+    // Browser Web Speech fallback path.
     const recognition = recognitionRef.current;
     if (!recognition) {
-      alert("Speech recognition is not supported in this browser.");
+      notify('Speech recognition is not supported in this browser.', 'error');
       return;
     }
     if (isDictating) {
       recognition.stop();
+      setIsDictating(false);
+      setDictationStatus('');
     } else {
       try {
         recognition.start();
         setIsDictating(true);
+        setDictationStatus('Listening…');
       } catch (e) {
         console.error(e);
+        setDictationStatus('Could not start dictation.');
       }
     }
   };
 
-  return { isDictating, toggleDictation };
+  return { isDictating, toggleDictation, dictationStatus };
 };
 
 const InlineNotes = ({ id, label }: { id: string, label: string }) => {
@@ -613,7 +679,7 @@ const InlineNotes = ({ id, label }: { id: string, label: string }) => {
     });
   };
 
-  const { isDictating, toggleDictation } = useDictation(handleDictationResult);
+  const { isDictating, toggleDictation, dictationStatus } = useDictation(handleDictationResult);
 
   return (
     <div className="mt-3 border-t border-[var(--border)] pt-3">
@@ -638,6 +704,11 @@ const InlineNotes = ({ id, label }: { id: string, label: string }) => {
           )}
         </div>
       </div>
+      {dictationStatus && (
+        <div className="text-[9px] font-mono text-[var(--text-tertiary)] mb-1 text-right leading-none">
+          {dictationStatus}
+        </div>
+      )}
       <textarea
         className="w-full h-24 p-2 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent-blue)] resize-none"
         placeholder={`Enter ${label.toLowerCase()} here...`}
@@ -664,7 +735,7 @@ const NotesBlock = ({ sectionKey }: { sectionKey: string }) => {
     });
   };
 
-  const { isDictating, toggleDictation } = useDictation(handleDictationResult);
+  const { isDictating, toggleDictation, dictationStatus } = useDictation(handleDictationResult);
 
   return (
     <Block theme="blue" letter="✎" name="SECTION NOTES" desc={`Custom notes for ${sectionKey.toUpperCase()}`}>
@@ -678,6 +749,11 @@ const NotesBlock = ({ sectionKey }: { sectionKey: string }) => {
             {isDictating ? 'STOP DICTATING' : 'DICTATE'}
           </button>
       </div>
+      {dictationStatus && (
+        <div className="text-[10px] font-mono text-[var(--text-tertiary)] mb-1 text-right leading-none">
+          {dictationStatus}
+        </div>
+      )}
       <textarea
         className="w-full h-32 p-2 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded text-[var(--text-primary)] font-mono focus:outline-none focus:border-[var(--accent-blue)] resize-none"
         placeholder="Enter your notes here..."
