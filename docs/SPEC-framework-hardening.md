@@ -54,7 +54,9 @@ operations, start clean, or back up before clearing site data (data-loss risk).
   checklists, and the compass all resolve the same namespace. Do this **after** routing
   reads through a single accessor to keep the blast radius contained.
 **Migration.** On first load with legacy un-namespaced keys, create a "Default operation"
-and migrate existing keys into it.
+and migrate existing keys into it. Guard with a stored `schemaVersion` (or a `migrated:v1`
+flag) so the migration runs **exactly once** and never re-runs or double-migrates on
+subsequent loads.
 **Files.** `src/App.tsx` (storage accessors, exporters, `InlineNotes`/`NotesBlock`/
 `EditableChecklist`), new small component(s). Consider extracting a `storage.ts` module.
 **Acceptance.** Can create/switch/delete operations; switching swaps all notes/checklists;

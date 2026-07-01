@@ -223,6 +223,9 @@ Required Swift behavior (correctness-critical):
   onDeviceOnly`. If on-device is requested but unsupported for the locale/device, send a
   clear status ("On-device speech unavailable for this locale/device") rather than
   silently falling back to cloud — **let the user decide** (OPSEC).
+- **Audio session:** on start, configure `AVAudioSession` — `setCategory(.record, mode:
+  .measurement, options: [.duckOthers])` then `setActive(true, options:
+  .notifyOthersOnDeactivation)`; deactivate it on stop (below).
 - **Lifecycle / cleanup (every stop path):** cancel + nil the previous `recognitionTask`
   before starting a new one; on stop, `audioEngine.stop()`, **remove the input tap**,
   `recognitionRequest.endAudio()`, nil request+task, deactivate the `AVAudioSession`.
