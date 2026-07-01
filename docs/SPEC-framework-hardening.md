@@ -18,7 +18,7 @@ Conventions to follow (already established):
 
 ## Milestone B — Robustness & data model
 
-### B1. Export edited checklists (PCC/PCI)
+### B1. Export edited checklists (PCC/PCI) — ✅ DONE
 **Problem.** Copy/PDF for the TOOLS view only emit `notes-tools`. User edits to the
 `pcc-*` / `pci-*` `EditableChecklist`s are unreachable by either exporter.
 **Approach.** Enumerate the checklist storage keys (or, better, derive them from a single
@@ -29,7 +29,7 @@ branch), read each checklist from `localStorage`, render under a clear heading
 **Acceptance.** Editing a checklist item then Copy/PDF includes the edited items in the
 output, grouped by scenario; empty/unedited checklists still export their defaults.
 
-### B2. Stable checklist item keys
+### B2. Stable checklist item keys — ✅ DONE
 **Problem.** `EditableChecklist` keys list rows by **array index**; deleting/reordering
 while a row is being edited mis-targets `editingIndex`.
 **Approach.** Change the item model from `string[]` to `{ id: string, text: string }[]`
