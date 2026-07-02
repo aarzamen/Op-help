@@ -49,6 +49,7 @@ src/main.tsx        # React root; ErrorBoundary + self-hosted @fontsource import
 src/App.tsx         # the bulk of the app (~1.4k lines): all views, components, export logic
 src/MapSymbols.tsx  # NATO/APP-6 map-symbol glyphs + MapSymbolsSection (TOOLS appendix)
 src/ErrorBoundary.tsx       # top-level error boundary (wraps <App/> in main.tsx)
+src/globals.d.ts    # ambient types: native ASR bridge (window.webkit) + Web Speech
 src/index.css       # design tokens (:root), component CSS, blackout theme, map-symbols
 metadata.json       # AI Studio app manifest (name, permissions)
 vite.config.ts      # Vite/Tailwind config
@@ -75,6 +76,10 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
 - **Toast + safe writes.** Use the module-level `notify(msg, type)` to surface a
   transient toast from anywhere (App renders it via the `app-toast` event), and
   `safeSetItem` for `localStorage` writes so a `QuotaExceededError` can't break typing.
+- **Dictation is provider-agnostic.** `useDictation` uses a native Apple-Speech bridge
+  (`window.webkit.messageHandlers.opordSpeech` + the `opord-asr-result` event) when inside
+  a WKWebView host, else the browser Web Speech API; each instance has a stable `useId`
+  `targetId` so DICTATE buttons don't cross-wire. See `docs/SPEC-dictation-apple-asr.md`.
 - **Export reads `localStorage` directly** (not React state) in `generateExportText`
   and `handleExportPDF`. If you add a new note field, wire it into both exporters.
 - **Theming via CSS variables.** Light theme is the `:root` block in `index.css`.
