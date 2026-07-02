@@ -69,7 +69,8 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
 - **Persistence is `localStorage`, by key convention:**
   - `inline-note-<id>` — per-section note fields (e.g. `inline-note-osmeac-o`)
   - `notes-<view>` — the free-text NotesBlock per view (`notes-smeac`, etc.)
-  - `pcc-*` / `pci-*` — editable checklist contents
+  - `pcc-*` / `pci-*` — editable checklist contents (`{id, text}[]`; storage keys are
+    centralized in the `CHECKLIST_KEYS` const, referenced by both the JSX and exporters)
   - `insert-note` is a `window` CustomEvent used to push text (e.g. a fetched MGRS
     grid) into an `InlineNotes` field by `id`.
 - **Toast + safe writes.** Use the module-level `notify(msg, type)` to surface a
@@ -135,6 +136,21 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
       app now actually type-checks against React types (it previously treated React as
       `any`).
 
+### Milestone B — data & robustness (in progress)
+
+- [x] **Edited PCC/PCI checklists are exported** (B1). `generateExportText` — and thus
+      `handleExportPDF`, which delegates to it — now emits every checklist's current items
+      grouped by scenario. Storage keys are centralized in `CHECKLIST_KEYS` (referenced by
+      both the export registry and each `<EditableChecklist>`) so they can't silently desync.
+- [x] **Stable checklist item ids** (B2). `EditableChecklist` stores `{id, text}[]` keyed by
+      a stable id; edit/delete operate on `id`, not array index, so deleting a row while
+      editing another no longer mis-targets. Legacy `string[]` storage migrates on first
+      read (idempotent), and malformed/`id`-less entries are repaired rather than trusted.
+- [ ] B3 (operations namespace + reset + JSON backup), B4 (PWA) — see the hardening spec.
+
+> Also in flight on a separate branch: **dictation Phase 1** (provider-agnostic
+> `useDictation` adapter) — see `docs/SPEC-dictation-apple-asr.md`.
+
 ### Remaining issues — roughly highest-impact first
 
 > Expanded, implementable specs: [`docs/SPEC-framework-hardening.md`](docs/SPEC-framework-hardening.md)
@@ -142,12 +158,7 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
 > (provider-agnostic dictation + optional Apple on-device ASR).
 
 **Robustness / data**
-- [ ] **Edited checklists are never exported.** Copy/PDF for the TOOLS view only emit
-      `notes-tools`; user edits to `pcc-*`/`pci-*` checklists are unreachable. Include
-      them in `generateExportText`/`handleExportPDF`.
-- [ ] **`EditableChecklist` uses array index as React key**; deleting while editing
-      mis-targets rows. Use stable ids.
-- [ ] **No "new operation"/reset and a single global note namespace** — can't keep
+- [ ] **No "new operation"/reset and a single global note namespace** (B3) — can't keep
       multiple plans, and clearing site data wipes everything with no export/backup.
 
 **Viability**
