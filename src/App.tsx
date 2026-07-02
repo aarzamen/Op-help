@@ -604,6 +604,10 @@ const useDictation = (onResult: (text: string) => void) => {
 
       rec.onend = () => {
         setIsDictating(false);
+        // Clear the transient "Listening…" when recognition ends naturally (e.g. a
+        // silence timeout) — but leave error text alone so onerror's message stays
+        // readable until its own 4s auto-clear.
+        setDictationStatus((current) => (current === 'Listening…' ? '' : current));
       };
 
       recognitionRef.current = rec;
