@@ -17,13 +17,13 @@ works). All user data lives in the browser via `localStorage`; there is no backe
 
 Five tabs (bottom nav on phones, top nav ≥ 900 px), one `view` state in `App.tsx`:
 
-| Tab | View file | What it is |
-|---|---|---|
-| GUIDE | `views/GuideView.tsx` | The whole method on one page: 5-step flow, the graded checklist as a rehearsal tracker, taking apart higher's order (specified / implied / essential), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, warfighting concepts, a searchable glossary |
-| ANALYZE | `views/AnalyzeView.tsx` | METT-T worksheet with the course's rules and labeled examples |
-| ORDER | `views/OrderView.tsx` | Orientation + ¶1–5 + time hack, each block listing what the grading sheet checks (with points), TEMPLATE quick-fill, a tasking-statement builder |
-| CASEVAC | `casevac/CasevacTab.tsx` | HLZ, CCP and route sketches edited in a full-screen workspace (tap / drag / pinch, inspector, undo), device handoff (link or file), 9-line, and the graded ¶4.a paragraph; PNG per sheet + a packet PDF |
-| TOOLS | `views/ToolsView.tsx` | PCC/PCI, order types, TCMs, map symbols |
+| Tab     | View file                | What it is                                                                                                                                                                                                                                                                                              |
+| ------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GUIDE   | `views/GuideView.tsx`    | The whole method on one page: 5-step flow, the graded checklist as a rehearsal tracker, taking apart higher's order (specified / implied / essential), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, warfighting concepts, a searchable glossary |
+| ANALYZE | `views/AnalyzeView.tsx`  | METT-T worksheet with the course's rules and labeled examples                                                                                                                                                                                                                                           |
+| ORDER   | `views/OrderView.tsx`    | Orientation + ¶1–5 + time hack, each block listing what the grading sheet checks (with points), TEMPLATE quick-fill, a tasking-statement builder                                                                                                                                                        |
+| CASEVAC | `casevac/CasevacTab.tsx` | HLZ, CCP and route sketches edited in a full-screen workspace (tap / drag / pinch, inspector, undo), device handoff (link or file), 9-line, and the graded ¶4.a paragraph; PNG per sheet + a packet PDF                                                                                                 |
+| TOOLS   | `views/ToolsView.tsx`    | PCC/PCI, order types, TCMs, map symbols                                                                                                                                                                                                                                                                 |
 
 > No AI features, no API keys, no environment variables. The app began as a Google AI
 > Studio scaffold; all of that (Gemini SDK, `metadata.json`, Cloud Run env, HMR switches)
@@ -56,7 +56,7 @@ CI (`.github/workflows/ci.yml`, Node 20) runs `npm ci`, `typecheck`, `lint`, `te
 `build` on every PR and on `main`. Unit tests cover the pure logic (grid math, camera,
 sketch items, plan validation, link decoding, route timing, checklists, PDF text). UI
 changes still need a manual pass: run the app and exercise the affected tab at phone
-width *and* desktop, light *and* blackout. Prettier is applied to files you touch; a few
+width _and_ desktop, light _and_ blackout. Prettier is applied to files you touch; a few
 old files (`MapSymbols.tsx`, `main.tsx`, `ErrorBoundary.tsx`) were never reformatted, so
 don't run `npm run format` across the repo in an unrelated change.
 
@@ -126,7 +126,7 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
   `data-theme="blackout"` on `<html>` and remaps every token to red-on-black. Use tokens
   (including the sketch / triage / callout tokens) so new UI inherits blackout for free.
 - **Colors mean paragraphs** (`docs/DESIGN-SYSTEM.md`). `Theme` is semantic — `orient |
-  situation | mission | execution | admin | command | ref` — and a block takes the color of
+situation | mission | execution | admin | command | ref` — and a block takes the color of
   the part of the order it feeds (all of CASEVAC is ¶4 `admin`). Never pick one for looks.
   Each `.theme-<role>` sets `--tone*` vars, so the nearest themed ancestor wins. Status
   (ok / warn / bad) is a tinted strip with a `StatusIcon`, never a solid tile.
@@ -134,7 +134,7 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
   METT-T letters, mnemonic codes like TK / CI / EN); anything else is an icon from
   `components/icons.tsx` (24-grid, 2 px stroke, `currentColor`; CSS sizes it per tile).
 - **Accordions are real buttons.** `Block` / `SubBlock` headers are `<button
-  aria-expanded>`; closed bodies are `inert` and animate with a grid-row transition.
+aria-expanded>`; closed bodies are `inert` and animate with a grid-row transition.
 - **Domain accuracy matters.** Doctrinal content (SMEAC, METT-T, KOCOA, TCMs, APP-6, the
   9-line, LP sizes, triage) must keep correct terminology. Course-exercise specifics are
   shown as labeled EXAMPLE callouts, never as doctrine.
@@ -302,8 +302,10 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
       editing another no longer mis-targets. Legacy `string[]` storage migrates on first
       read (idempotent), and malformed/`id`-less entries are repaired rather than trusted.
 - [x] **B4 — PWA / offline.** Manifest, icons and a build-generated service worker; the
-      second load works with no connection (see *Hosting & deploy*).
-- [ ] B3 (operations namespace + reset + JSON backup) — see the hardening spec.
+      second load works with no connection (see _Hosting & deploy_).
+- [ ] **B3 — implemented in [#13](https://github.com/aarzamen/Op-help/pull/13), pending merge.**
+      Named plans, scoped storage, reset/delete, current/all-plan JSON backup and validated
+      restore as copies; legacy Default data stays readable. See the hardening spec.
 
 > **Dictation Phase 1** (provider-agnostic `useDictation` adapter) is merged (#4); the
 > Apple on-device backend is the next phase — see `docs/SPEC-dictation-apple-asr.md`.
@@ -315,16 +317,22 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
 > (provider-agnostic dictation + optional Apple on-device ASR).
 
 **Robustness / data**
-- [ ] **No "new operation"/reset and a single global note namespace** (B3) — can't keep
-      multiple plans, and clearing site data wipes everything with no export/backup.
+
+- [ ] **Merge B3 [#13](https://github.com/aarzamen/Op-help/pull/13).** It adds isolated
+      named plans and backup/restore without renaming existing keys. Use one editing tab
+      per plan; reset/delete invalidate stale tabs before they can write old state.
 
 **Viability**
-- [ ] **OPSEC.** Operational content (enemy SALUTE, friendly forces, grids, mission)
-      is stored unencrypted in `localStorage` with no auth. Review handling (consider
-      client-side encryption / a panic-wipe) before any real-world use.
+
+- [ ] **OPSEC minimum — implemented in [#14](https://github.com/aarzamen/Op-help/pull/14),
+      pending merge after #13.** PLANS & BACKUPS explains unencrypted storage and JSON
+      files; typing WIPE removes all app-owned operational data and display preferences,
+      including abandoned imports, while preserving unrelated keys. Downloaded files
+      remain. Optional passphrase encryption is not implemented.
 - [x] **PWA / offline** — done (B4).
 
 **Accuracy / cleanup**
+
 - [x] **Grid vs. true north.** G-M = WMM declination − UTM grid convergence, in both the
       compass and the CASEVAC sheets.
 - [x] **De-hardcode unit-specifics** — unit / operation / banner come from the ORDER
@@ -333,15 +341,19 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
       `aria-current` / `aria-pressed` / `aria-expanded`; closed panels are `inert`.
 - [x] **Split `App.tsx`** and move doctrinal lists into `src/content/`.
 - [x] **Unit tests** — Vitest over the pure modules, run in CI.
-- [ ] **More tests.** `hlz.ts` 10:1 checks and wind components, `sheetData.ts` (9-line
-      script and ¶4.a text), `ccp.ts`; component tests (RTL + jsdom) for `EditableChecklist`
-      and the workspace inspector; a Playwright smoke test of the five tabs and the workspace.
+- [ ] **More tests.** Pure-module coverage for HLZ 10:1 checks/wind, CCP geometry, and
+      9-line/¶4.a text is implemented in [#15](https://github.com/aarzamen/Op-help/pull/15)
+      (26 new tests).
+      Component tests (RTL + jsdom) for `EditableChecklist` and the workspace inspector,
+      and a committed Playwright smoke suite for the five tabs/workspace remain.
 
 **Candidates (proposed, not built)**
+
 - [ ] **Terrain-model kit printout** — labels for every control measure / unit marker
       plus the board (grids, astro data, challenge & pass, timeline), from the order.
-- [ ] **Publish on ChatGPT Sites** so a classmate can open it on a phone with no setup
-      (the build is ready: see *Hosting & deploy*).
+- [x] **Published on ChatGPT Sites:** <https://op-help.annonable.chatgpt.site> (public).
+      Hosting identity is in [#11](https://github.com/aarzamen/Op-help/pull/11); keep the
+      same Sites project for future releases.
 - [ ] **Practice mode** — glossary / task-verb flashcards and "find the implied task"
       drills from the worked examples.
 - [ ] **Brief timer** — per-section timing for rehearsals against the 30–60 min window.
@@ -350,13 +362,25 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
 
 ## Handoff — where things stand
 
-*Written Oct 2026 when development moved from Claude Code to Codex. Update it as you go.*
+_Written Oct 2026 when development moved from Claude Code to Codex. Update it as you go._
 
 **State of `main`.** Five tabs, the CASEVAC workspace and handoff, the color/icon system,
 offline PWA and a static build are all merged; CI (typecheck, lint, unit tests, build) is
 green. Nothing depends on Google AI Studio any more. The AI Studio copy of this project
 is abandoned: don't sync from it, and never take its `package-lock.json` (it is stale and
 once broke `npm ci` on `main`).
+
+**Publication / review update (22 Oct 2026).** The public Site is
+<https://op-help.annonable.chatgpt.site>. The release branch combines the reviewed PRs;
+GitHub `main` still needs their merges. #11 is only `.openai/hosting.json`; #12 fixes
+offline cache matches for hosts that send `Vary: Origin`; #13 adds B3; #14 adds the
+guarded wipe and depends on #13. Calculation tests are in #15. Keep those changes
+when rebuilding the live site. All publication artifacts come from GitHub-derived source.
+
+Phone-sized touch Chromium checks passed for all five tabs, workspace drag/pinch/DONE,
+packet PDF download and offline reload. Named-plan isolation, backup/restore/reset,
+corrupt-file rejection, wipe, blackout and desktop keyboard focus were also checked.
+These are browser checks, not a real iPhone/iPad pass; the maintainer is handling that pass.
 
 **Who it's for.** The maintainer is a Navy physician. First users are classmates in the
 EULC "Issue a Combat Order" course, some of them clinicians with no tactical background;
@@ -365,11 +389,9 @@ the course ends in a group-of-four terrain-model brief graded on the checklist i
 
 **Next, in order:**
 
-1. **Publish on ChatGPT Sites.** `npm ci && npm run typecheck && npm run lint && npm test
-   && npm run build`; confirm `dist/` deploys as a static site (see *Hosting & deploy*);
-   save a version and check it on a phone before deploying: open each tab, EDIT SKETCH on
-   CASEVAC (drag, pinch, DONE), PACKET PDF, then reload in airplane mode. Commit
-   `.openai/hosting.json`.
+1. **Publication is done.** Keep the existing public Site and hosting identity. For each
+   release run `npm ci && npm run typecheck && npm run lint && npm test && npm run build`,
+   save the static artifact, check tabs/workspace/PDF/offline, then deploy that saved version.
 2. **Real-device pass on iPhone and iPad** — headless Chromium can't prove these: workspace
    gestures, bottom sheet and safe areas; compass permission prompt; dictation; PDF / PNG
    download and the share sheet; Add to Home Screen and offline; SEND LINK from phone →
@@ -379,12 +401,17 @@ the course ends in a group-of-four terrain-model brief graded on the checklist i
    break or hang the tab, image-move mode sticking, clamped number fields, …); all were
    fixed and the plan validation is now fuzz-tested. Anything that accepts outside data
    (links, files, storage) goes through `normalizePlan` / `normalizeBackground`.
-4. **B3 — operations + backup** (`docs/SPEC-framework-hardening.md`): several named plans,
-   reset, JSON export / import of everything. Today there is one global plan and clearing
-   site data loses it all.
-5. **OPSEC** — operational text sits unencrypted in `localStorage`. At minimum a "wipe all
-   data" control; consider optional passphrase encryption.
-6. **More tests**, then the candidates list above.
+4. **B3 — review/merge #13.** Named plans and JSON backup/restore are implemented;
+   migration is idempotent and keeps legacy data. Metadata mutations use Web Locks;
+   unsupported browsers retain legacy app access but cannot mutate named plans. Imports
+   validate before writing, stage new namespaces and roll back failures. Export validates
+   too: unsupported stored numeric/list values must be corrected before backing up;
+   legitimate long text is preserved. See `docs/SPEC-operations-implementation.md` in #13.
+5. **OPSEC — review/merge #14 after #13.** The warning and typed-confirmation wipe are
+   implemented. Content and downloaded backups remain unencrypted; optional encryption
+   needs a passphrase/recovery design and is not implied by the wipe.
+6. **More tests.** Merge #15; add component and persistent browser
+   smoke coverage, then consider the candidates list above.
 
 **Ground rules.**
 
