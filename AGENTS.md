@@ -374,7 +374,11 @@ the course ends in a group-of-four terrain-model brief graded on the checklist i
    gestures, bottom sheet and safe areas; compass permission prompt; dictation; PDF / PNG
    download and the share sheet; Add to Home Screen and offline; SEND LINK from phone →
    open on iPad. Fix what breaks.
-3. **Open review items** (below).
+3. **Keep the review bar.** An independent review of the CASEVAC workspace and handoff
+   (Oct 2026) found 14 defects (dead zoom buttons with a mouse, link payloads that could
+   break or hang the tab, image-move mode sticking, clamped number fields, …); all were
+   fixed and the plan validation is now fuzz-tested. Anything that accepts outside data
+   (links, files, storage) goes through `normalizePlan` / `normalizeBackground`.
 4. **B3 — operations + backup** (`docs/SPEC-framework-hardening.md`): several named plans,
    reset, JSON export / import of everything. Today there is one global plan and clearing
    site data loses it all.
