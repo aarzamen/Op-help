@@ -40,4 +40,8 @@ interface Window {
 
 interface WindowEventMap {
   'opord-asr-result': CustomEvent<OpordAsrDetail>;
+  /** A notes field's stored value changed outside its textarea (see lib/storage appendNote). */
+  'note-changed': CustomEvent<{ id: string }>;
+  /** Transient toast request (see lib/storage notify). */
+  'app-toast': CustomEvent<{ msg: string; type?: 'success' | 'error' }>;
 }
