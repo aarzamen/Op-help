@@ -201,21 +201,35 @@ const NorthArrow = ({
   north,
   P,
   u,
+  card = false,
 }: {
   at: Vec;
   north?: NorthReference | null;
   P: Palette;
   u: number;
+  /** Opaque card behind arrow and labels: the workspace pins it over moving content. */
+  card?: boolean;
 }) => {
   const len = u * 7;
   const gm = north?.gm ?? 0;
   return (
     <g transform={`translate(${at.x} ${-at.y})`}>
-      <circle
-        r={u * 6.2}
-        cy={-len * 0.35}
-        style={{ fill: P.paper, fillOpacity: 0.85, stroke: P.grid, strokeWidth: u * 0.15 * P.lw }}
-      />
+      {card ? (
+        <rect
+          x={-u * 5.8}
+          y={-u * 12}
+          width={u * 11.6}
+          height={u * 15.4}
+          rx={u * 1.2}
+          style={{ fill: P.paper, stroke: P.grid, strokeWidth: u * 0.15 * P.lw }}
+        />
+      ) : (
+        <circle
+          r={u * 6.2}
+          cy={-len * 0.35}
+          style={{ fill: P.paper, fillOpacity: 0.85, stroke: P.grid, strokeWidth: u * 0.15 * P.lw }}
+        />
+      )}
       <line
         x1={0}
         y1={0}
@@ -424,6 +438,7 @@ export const SketchCanvas = ({
           north={north}
           P={P}
           u={u}
+          card={!!camera}
         />
       )}
       {notToScale ? (

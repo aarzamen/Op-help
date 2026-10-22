@@ -104,10 +104,13 @@ export default function Workspace(props: WorkspaceProps) {
   // ----- camera -----
   const ready = size.w > 0 && size.h > 0;
   // On phones the bottom sheet's peek covers the canvas bottom: fit above it.
-  const inset = narrow ? 118 : 0;
+  // Phones: keep the fitted sketch clear of the north card (top) and the peeking panel
+  // (bottom). The phone fit is width-limited, so the top band costs no scale there.
+  const insetTop = narrow ? 96 : 0;
+  const insetBottom = narrow ? 118 : 0;
   const fitted = (): Camera => {
-    const c = fitCamera(view, { w: size.w, h: Math.max(1, size.h - inset) });
-    return { ...c, cy: c.cy - (inset / 2) * c.mpp };
+    const c = fitCamera(view, { w: size.w, h: Math.max(1, size.h - insetTop - insetBottom) });
+    return { ...c, cy: c.cy - ((insetBottom - insetTop) / 2) * c.mpp };
   };
   const cam: Camera =
     camState && camState.sheet === sheet
