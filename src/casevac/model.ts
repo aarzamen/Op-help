@@ -1,5 +1,4 @@
-import { readJson, safeSetItem } from '../lib/storage';
-import { newChecklistItemId } from '../lib/checklists';
+import { newItemId, readJson, safeSetItem } from './host';
 import type { Vec } from './geo';
 
 /**
@@ -13,7 +12,7 @@ export const CASEVAC_KEY = 'casevac-plan';
 export type SheetId = 'hlz' | 'ccp' | 'route';
 export const bgKey = (sheet: SheetId) => `casevac-bg-${sheet}`;
 
-export const newId = () => newChecklistItemId().replace('item-', '');
+export const newId = () => newItemId().replace('item-', '');
 
 // ----- doctrine constants -----
 
@@ -499,25 +498,74 @@ export function defaultPlan(): CasevacPlan {
   };
 }
 
-/** Load the stored plan, filling any fields a previous version didn't have. */
-export function loadPlan(): CasevacPlan {
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v);
+const isVec = (v: unknown): v is Vec =>
+  isObj(v) && Number.isFinite(v.x as number) && Number.isFinite(v.y as number);
+/** Keep an array only if every entry is an object with a numeric `pos` (when `withPos`). */
+const arr = <T>(v: unknown, fallback: T[], withPos = true): T[] =>
+  Array.isArray(v) && v.every((e) => isObj(e) && (!withPos || isVec(e.pos)))
+    ? (v as T[])
+    : fallback;
+
+/**
+ * Fill any fields a previous version didn't have and drop malformed collections, so a plan
+ * from storage, a shared link or a file can't crash the sketches. Returns null when `raw`
+ * isn't a v1 plan at all.
+ */
+export function normalizePlan(raw: unknown): CasevacPlan | null {
+  if (!isObj(raw) || raw.v !== 1) return null;
   const base = defaultPlan();
-  const stored = readJson<Partial<CasevacPlan> | null>(CASEVAC_KEY, null);
-  if (!stored || stored.v !== 1) return base;
+  const s = raw as Partial<CasevacPlan>;
+  const hlz = { ...base.hlz, ...(isObj(s.hlz) ? s.hlz : {}) };
+  const ccp = { ...base.ccp, ...(isObj(s.ccp) ? s.ccp : {}) };
+  const route = { ...base.route, ...(isObj(s.route) ? s.route : {}) };
+  const nineLine = { ...base.nineLine, ...(isObj(s.nineLine) ? s.nineLine : {}) };
+  hlz.obstacles = arr(hlz.obstacles, base.hlz.obstacles);
+  hlz.security = arr(hlz.security, base.hlz.security);
+  if (!isVec(hlz.loadPoint)) hlz.loadPoint = base.hlz.loadPoint;
+  if (!isVec(hlz.ccpPos)) hlz.ccpPos = base.hlz.ccpPos;
+  ccp.areas = arr(ccp.areas, base.ccp.areas);
+  ccp.security = arr(ccp.security, base.ccp.security);
+  route.nodes = arr(route.nodes, base.route.nodes);
+  route.legs = arr(route.legs, base.route.legs, false);
+  if (route.nodes.length < 2 || route.legs.length !== route.nodes.length - 1) {
+    route.nodes = base.route.nodes;
+    route.legs = base.route.legs;
+  }
+  nineLine.mist = arr(nineLine.mist, base.nineLine.mist, false);
   return {
     ...base,
-    ...stored,
-    hlz: { ...base.hlz, ...stored.hlz },
-    ccp: { ...base.ccp, ...stored.ccp },
-    route: { ...base.route, ...stored.route },
-    para: { ...base.para, ...stored.para },
-    nineLine: { ...base.nineLine, ...stored.nineLine },
+    ...s,
+    v: 1,
+    hlz,
+    ccp,
+    route,
+    para: { ...base.para, ...(isObj(s.para) ? s.para : {}) },
+    nineLine,
   };
+}
+
+/** Load the stored plan (or the labeled example when there is none). */
+export function loadPlan(): CasevacPlan {
+  return normalizePlan(readJson<unknown>(CASEVAC_KEY, null)) ?? defaultPlan();
 }
 
 export const savePlan = (plan: CasevacPlan) => safeSetItem(CASEVAC_KEY, JSON.stringify(plan));
 
-export function loadBackground(sheet: SheetId): Background | null {
-  const bg = readJson<Background | null>(bgKey(sheet), null);
-  return bg && typeof bg.dataUrl === 'string' && bg.dataUrl.startsWith('data:image/') ? bg : null;
+/** A background is only trusted if it is an inline image with sane numbers. */
+export function normalizeBackground(raw: unknown): Background | null {
+  if (!isObj(raw)) return null;
+  const bg = raw as Partial<Background>;
+  const ok =
+    typeof bg.dataUrl === 'string' &&
+    /^data:image\/(png|jpe?g|webp|gif);base64,/.test(bg.dataUrl) &&
+    Number.isFinite(bg.aspect) &&
+    Number.isFinite(bg.widthM) &&
+    isVec(bg.offset) &&
+    Number.isFinite(bg.opacity);
+  return ok ? (bg as Background) : null;
 }
+
+export const loadBackground = (sheet: SheetId): Background | null =>
+  normalizeBackground(readJson<unknown>(bgKey(sheet), null));

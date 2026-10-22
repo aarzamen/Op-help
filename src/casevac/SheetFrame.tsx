@@ -1,5 +1,5 @@
 import React from 'react';
-import { dtgZulu } from '../lib/dtg';
+import { dtgZulu } from './host';
 import type { CasevacPlan } from './model';
 import { PRINT_PALETTE as P } from './palette';
 import type { Lines } from './sheetData';

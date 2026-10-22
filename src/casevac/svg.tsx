@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { eastWest, pts, type MgrsRef, type NorthReference, type Vec } from './geo';
 import type { ViewBox } from './hlz';
 import type { Palette } from './palette';
@@ -37,9 +37,9 @@ export const Txt = ({
     style={{
       fill: color ?? P.ink,
       fontFamily: mono ? P.mono : P.sans,
-      fontWeight: weight,
+      fontWeight: Math.min(weight, P.maxWeight),
       stroke: halo ? P.halo : 'none',
-      strokeWidth: halo ? size * 0.28 : 0,
+      strokeWidth: halo ? size * (P.lw < 1 ? 0.2 : 0.28) : 0,
       strokeLinejoin: 'round',
       paintOrder: 'stroke',
     }}
@@ -137,7 +137,7 @@ const Gridlines = ({
           y1={-view.minY}
           x2={l.x}
           y2={-maxY}
-          style={{ stroke: P.grid, strokeWidth: u * 0.18 }}
+          style={{ stroke: P.grid, strokeWidth: u * 0.18 * P.lw }}
         />
       ))}
       {ys.map((l) => (
@@ -147,7 +147,7 @@ const Gridlines = ({
           y1={-l.y}
           x2={maxX}
           y2={-l.y}
-          style={{ stroke: P.grid, strokeWidth: u * 0.18 }}
+          style={{ stroke: P.grid, strokeWidth: u * 0.18 * P.lw }}
         />
       ))}
       {gridRef &&
@@ -201,22 +201,42 @@ const NorthArrow = ({
   north,
   P,
   u,
+  card = false,
 }: {
   at: Vec;
   north?: NorthReference | null;
   P: Palette;
   u: number;
+  /** Opaque card behind arrow and labels: the workspace pins it over moving content. */
+  card?: boolean;
 }) => {
   const len = u * 7;
   const gm = north?.gm ?? 0;
   return (
     <g transform={`translate(${at.x} ${-at.y})`}>
-      <circle
-        r={u * 6.2}
-        cy={-len * 0.35}
-        style={{ fill: P.paper, fillOpacity: 0.85, stroke: P.grid, strokeWidth: u * 0.15 }}
+      {card ? (
+        <rect
+          x={-u * 5.8}
+          y={-u * 12}
+          width={u * 11.6}
+          height={u * 15.4}
+          rx={u * 1.2}
+          style={{ fill: P.paper, stroke: P.grid, strokeWidth: u * 0.15 * P.lw }}
+        />
+      ) : (
+        <circle
+          r={u * 6.2}
+          cy={-len * 0.35}
+          style={{ fill: P.paper, fillOpacity: 0.85, stroke: P.grid, strokeWidth: u * 0.15 * P.lw }}
+        />
+      )}
+      <line
+        x1={0}
+        y1={0}
+        x2={0}
+        y2={-len}
+        style={{ stroke: P.ink, strokeWidth: u * 0.45 * P.lw }}
       />
-      <line x1={0} y1={0} x2={0} y2={-len} style={{ stroke: P.ink, strokeWidth: u * 0.45 }} />
       <polygon
         points={`0,${-len - u * 1.6} ${-u * 0.9},${-len + u * 0.2} ${u * 0.9},${-len + u * 0.2}`}
         style={{ fill: P.ink }}
@@ -237,7 +257,7 @@ const NorthArrow = ({
             y1={0}
             x2={0}
             y2={-len * 0.82}
-            style={{ stroke: P.danger, strokeWidth: u * 0.35 }}
+            style={{ stroke: P.danger, strokeWidth: u * 0.35 * P.lw }}
           />
           <polygon
             points={`0,${-len * 0.82 - u * 1.3} ${-u * 0.6},${-len * 0.82 + u * 0.3} ${u * 0.6},${-len * 0.82 + u * 0.3}`}
@@ -280,7 +300,7 @@ const ScaleBar = ({ view, P, u }: { view: ViewBox; P: Palette; u: number }) => {
         y={-y0}
         width={L / 2}
         height={h}
-        style={{ fill: P.paper, stroke: P.ink, strokeWidth: u * 0.2 }}
+        style={{ fill: P.paper, stroke: P.ink, strokeWidth: u * 0.2 * P.lw }}
       />
       <Txt at={{ x: x0, y: y0 + u * 1.6 }} size={u * 1.7} P={P} anchor="middle" weight={600}>
         0
@@ -292,131 +312,82 @@ const ScaleBar = ({ view, P, u }: { view: ViewBox; P: Palette; u: number }) => {
   );
 };
 
-export interface DragEvt {
-  id: string;
-  pos: Vec;
-  phase: 'start' | 'move' | 'end';
-}
-
 /**
- * The shared sketch frame: paper, optional background imagery, gridlines, north arrow,
- * scale bar, and pointer dragging for any child with `data-drag="<id>"`. Touches that start
- * on a draggable marker don't scroll the page; touches elsewhere still do.
+ * The shared sketch frame: paper, optional background imagery, gridlines, north arrow and
+ * scale bar around the sheet's layers. Purely presentational — the workspace owns gestures.
+ *
+ * `view` is the sheet (it sets the drawing unit the layers use, so labels match the export);
+ * `camera`, when given, is the visible area: the viewBox, the paper and the gridlines follow
+ * it, and the grid labels, north arrow and scale bar stay a constant size on screen.
  */
 export const SketchCanvas = ({
   view,
+  camera,
   P,
   gridRef,
   north,
   background,
-  bgAdjust = false,
-  editable = false,
   notToScale = false,
   showNorth = true,
   northAt,
   badges,
-  getPos,
-  onDrag,
   ariaLabel,
   children,
   svgRef,
   frame,
+  selection,
+  marker,
+  decoUnit,
+  className = '',
 }: {
+  view: ViewBox;
+  camera?: ViewBox;
   /** Absolute placement when nested inside an export sheet. */
   frame?: { x: number; y: number; w: number; h: number };
-  view: ViewBox;
   P: Palette;
   gridRef?: MgrsRef | null;
   north?: NorthReference | null;
   background?: Background | null;
-  bgAdjust?: boolean;
-  editable?: boolean;
   notToScale?: boolean;
   showNorth?: boolean;
-  /** North-arrow anchor; defaults to the top-right corner. */
+  /** North-arrow anchor; defaults to the top-right corner. Ignored with a camera. */
   northAt?: Vec;
   /** Centers of the badges drawn over the frame edge (grid labels beneath them are dropped). */
   badges?: Vec[];
-  getPos?: (id: string) => Vec | null;
-  onDrag?: (e: DragEvt) => void;
   ariaLabel: string;
   children: React.ReactNode;
-  svgRef?: React.RefObject<SVGSVGElement | null>;
+  svgRef?: React.Ref<SVGSVGElement>;
+  /** Dashed ring around the selected item (world center + radius). */
+  selection?: { pos: Vec; r: number } | null;
+  /** Crosshair where an "add here" is pending. */
+  marker?: Vec | null;
+  /**
+   * World size of one drawing unit for the frame decorations (grid labels, north arrow,
+   * scale bar) — the workspace passes a screen-pixel-based value so they stay a constant
+   * size on screen at any zoom and window width.
+   */
+  decoUnit?: number;
+  className?: string;
 }) => {
-  const localRef = useRef<SVGSVGElement>(null);
-  const ref = svgRef ?? localRef;
-  const drag = useRef<{ id: string; pointerId: number; off: Vec; last: Vec } | null>(null);
-  const u = view.w / 100;
-  const interactive = editable || bgAdjust;
-
-  // Block page scroll only when a touch starts on something draggable.
-  useEffect(() => {
-    const svg = ref.current;
-    if (!svg || !interactive) return;
-    const onTouchStart = (e: TouchEvent) => {
-      const t = e.target as Element | null;
-      if (bgAdjust || t?.closest('[data-drag]')) e.preventDefault();
-    };
-    svg.addEventListener('touchstart', onTouchStart, { passive: false });
-    return () => svg.removeEventListener('touchstart', onTouchStart);
-  }, [ref, interactive, bgAdjust]);
-
-  const toWorld = (clientX: number, clientY: number): Vec | null => {
-    const svg = ref.current;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return null;
-    const p = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
-    return { x: p.x, y: -p.y };
-  };
-
-  const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!interactive || !getPos || !onDrag) return;
-    const target = (e.target as Element).closest('[data-drag]');
-    const id = bgAdjust ? '__bg' : target?.getAttribute('data-drag');
-    if (!id) return;
-    const w = toWorld(e.clientX, e.clientY);
-    const p = getPos(id);
-    if (!w || !p) return;
-    drag.current = { id, pointerId: e.pointerId, off: { x: w.x - p.x, y: w.y - p.y }, last: p };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    e.preventDefault();
-    onDrag({ id, pos: p, phase: 'start' });
-  };
-
-  const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    const d = drag.current;
-    if (!d || d.pointerId !== e.pointerId || !onDrag) return;
-    const w = toWorld(e.clientX, e.clientY);
-    if (!w) return;
-    d.last = { x: Math.round(w.x - d.off.x), y: Math.round(w.y - d.off.y) };
-    onDrag({ id: d.id, pos: d.last, phase: 'move' });
-  };
-
-  const endDrag = (e: React.PointerEvent<SVGSVGElement>) => {
-    const d = drag.current;
-    if (!d || d.pointerId !== e.pointerId) return;
-    drag.current = null;
-    onDrag?.({ id: d.id, pos: d.last, phase: 'end' });
-  };
-
-  const maxX = view.minX + view.w;
-  const maxY = view.minY + view.h;
+  const area = camera ?? view;
+  const u = decoUnit ?? area.w / 100;
+  const maxX = area.minX + area.w;
+  const maxY = area.minY + area.h;
   const bgH = background ? background.widthM * background.aspect : 0;
+  const ring = view.w / 100;
+  // In the workspace the north arrow parks top-left (the zoom buttons own the top-right).
+  const camNorth = { x: area.minX + u * 9, y: maxY - u * 9.5 };
 
   return (
     <svg
-      ref={ref}
-      className={`sketch-svg ${interactive ? 'sketch-interactive' : ''} ${bgAdjust ? 'sketch-bg-adjust' : ''}`}
-      viewBox={`${view.minX} ${-maxY} ${view.w} ${view.h}`}
+      ref={svgRef}
+      className={`sketch-svg ${className}`}
+      viewBox={`${area.minX} ${-maxY} ${area.w} ${area.h}`}
       {...(frame ? { x: frame.x, y: frame.y, width: frame.w, height: frame.h } : {})}
       role="img"
       aria-label={ariaLabel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
     >
-      <rect x={view.minX} y={-maxY} width={view.w} height={view.h} style={{ fill: P.paper }} />
+      <rect x={area.minX} y={-maxY} width={area.w} height={area.h} style={{ fill: P.paper }} />
       {background && (
         <image
           href={background.dataUrl}
@@ -428,19 +399,51 @@ export const SketchCanvas = ({
           preserveAspectRatio="none"
         />
       )}
-      <Gridlines view={view} gridRef={notToScale ? null : gridRef} P={P} u={u} avoid={badges} />
+      <Gridlines
+        view={area}
+        gridRef={notToScale ? null : gridRef}
+        P={P}
+        u={u}
+        avoid={camera ? (showNorth ? [camNorth] : []) : badges}
+      />
       {children}
+      {selection && (
+        <circle
+          cx={selection.pos.x}
+          cy={-selection.pos.y}
+          r={selection.r}
+          className="sketch-selection"
+          style={{
+            fill: 'none',
+            stroke: 'var(--sketch-select, #00A3FF)',
+            strokeWidth: ring * 0.45,
+            strokeDasharray: `${ring * 1.2} ${ring * 0.8}`,
+          }}
+        />
+      )}
+      {marker && (
+        <g style={{ stroke: 'var(--sketch-select, #00A3FF)', strokeWidth: u * 0.35, fill: 'none' }}>
+          <circle cx={marker.x} cy={-marker.y} r={u * 2.2} />
+          <line x1={marker.x - u * 3.6} y1={-marker.y} x2={marker.x + u * 3.6} y2={-marker.y} />
+          <line x1={marker.x} y1={-marker.y - u * 3.6} x2={marker.x} y2={-marker.y + u * 3.6} />
+        </g>
+      )}
       {showNorth && (
         <NorthArrow
-          at={northAt ?? { x: maxX - u * 8, y: maxY - u * 13 }}
+          at={
+            camera
+              ? { x: camNorth.x, y: camNorth.y - u * 3 }
+              : (northAt ?? { x: maxX - u * 8, y: maxY - u * 13 })
+          }
           north={north}
           P={P}
           u={u}
+          card={!!camera}
         />
       )}
       {notToScale ? (
         <Txt
-          at={{ x: view.minX + u * 3, y: view.minY + u * 3.5 }}
+          at={{ x: area.minX + u * 3, y: area.minY + u * 3.5 }}
           size={u * 2}
           P={P}
           anchor="start"
@@ -449,7 +452,7 @@ export const SketchCanvas = ({
           NOT TO SCALE
         </Txt>
       ) : (
-        <ScaleBar view={view} P={P} u={u} />
+        <ScaleBar view={area} P={P} u={u} />
       )}
     </svg>
   );

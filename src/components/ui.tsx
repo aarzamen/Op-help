@@ -1,6 +1,21 @@
 import React, { useId, useState } from 'react';
+import { CircleAlert, CircleCheck, CircleX } from 'lucide-react';
 
-export type Theme = 'blue' | 'red' | 'green' | 'amber' | 'purple' | 'slate';
+/**
+ * Which part of the order a block belongs to (or feeds). Pick by meaning, never for looks:
+ * see docs/DESIGN-SYSTEM.md.
+ */
+export type Theme = 'orient' | 'situation' | 'mission' | 'execution' | 'admin' | 'command' | 'ref';
+
+export type Status = 'ok' | 'warn' | 'bad';
+
+const STATUS_ICON = { ok: CircleCheck, warn: CircleAlert, bad: CircleX };
+
+/** Shape for a status strip, so ok / warn / bad never rely on color alone (blackout). */
+export const StatusIcon = ({ level }: { level: Status }) => {
+  const I = STATUS_ICON[level];
+  return <I size={14} className="finding-icon" aria-hidden="true" />;
+};
 
 /**
  * Collapsible card. The header is a real <button> (keyboard + screen reader), the body is

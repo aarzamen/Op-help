@@ -17,7 +17,8 @@ import { exportPdf, exportText } from './export/exporters';
 import GuideView from './views/GuideView';
 import AnalyzeView from './views/AnalyzeView';
 import OrderView from './views/OrderView';
-import CasevacView from './views/CasevacView';
+import CasevacView from './casevac/CasevacTab';
+import { incomingPayload } from './casevac/handoff';
 import ToolsView from './views/ToolsView';
 
 export type ViewId = 'guide' | 'analyze' | 'order' | 'casevac' | 'tools';
@@ -64,7 +65,9 @@ const NavButtons = ({ view, onGo }: { view: ViewId; onGo: (v: ViewId) => void })
 
 export default function App() {
   const [stored, setView] = useLocalStorage<ViewId>('active-view', 'guide');
-  const view: ViewId = NAV.some((n) => n.id === stored) ? stored : 'guide';
+  // A shared CASEVAC link (#cv=…) opens straight onto the CASEVAC tab.
+  const [linkOpen, setLinkOpen] = useState(() => incomingPayload() !== null);
+  const view: ViewId = linkOpen ? 'casevac' : NAV.some((n) => n.id === stored) ? stored : 'guide';
   const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null);
   const [isBlackoutMode, setIsBlackoutMode] = useLocalStorage<boolean>('blackout-mode', false);
   const [exporting, setExporting] = useState(false);
@@ -88,6 +91,7 @@ export default function App() {
   }, [toast]);
 
   const go = (v: ViewId) => {
+    setLinkOpen(false);
     setView(v);
     window.scrollTo({ top: 0 });
   };

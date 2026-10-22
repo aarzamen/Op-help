@@ -1,5 +1,5 @@
 /**
- * Sketch colors. The on-screen palette is CSS variables (applied through `style`, which
+ * Sketch colors and weights. The on-screen palette is CSS variables (applied through `style`, which
  * resolves var() everywhere) so blackout mode recolors the sketches for free. Exports are
  * rasterized from a standalone SVG that can't see page CSS, so they use PRINT_PALETTE.
  */
@@ -27,6 +27,12 @@ export interface Palette {
   halo: string;
   sans: string;
   mono: string;
+  /** Line-weight multiplier: 1 on screen, lighter for print. */
+  lw: number;
+  /** Heaviest label weight. */
+  maxWeight: number;
+  /** Arrowhead size multiplier (follows the lighter print lines). */
+  head: number;
 }
 
 export const UI_PALETTE: Palette = {
@@ -53,6 +59,9 @@ export const UI_PALETTE: Palette = {
   halo: 'var(--surface)',
   sans: "'IBM Plex Sans', -apple-system, sans-serif",
   mono: "'JetBrains Mono', ui-monospace, Menlo, monospace",
+  lw: 1,
+  maxWeight: 800,
+  head: 1,
 };
 
 export const PRINT_PALETTE: Palette = {
@@ -79,4 +88,9 @@ export const PRINT_PALETTE: Palette = {
   halo: '#FFFFFF',
   sans: "'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif",
   mono: "'JetBrains Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+  // Print is read at arm's length on paper: thinner lines and lighter labels than the
+  // phone screen needs, so the sheet reads as a drawing rather than a poster.
+  lw: 0.55,
+  maxWeight: 600,
+  head: 0.8,
 };

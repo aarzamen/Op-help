@@ -1,14 +1,31 @@
 import { ArrowDown, ArrowUp, ClipboardCopy, Plus, Trash2 } from 'lucide-react';
-import { Block, Callout, Info } from '../components/ui';
 import {
+  appendNote,
+  Block,
+  Callout,
   CheckGroup,
+  copyText,
   FieldRow,
+  IconCcp,
+  IconChain,
+  IconHeader,
+  IconHlz,
+  IconLayout,
+  IconMarking,
+  IconMedic,
+  IconMist,
+  IconPace,
+  IconRadio,
+  IconShield,
+  IconTree,
+  IconWindsock,
+  Info,
+  notify,
   NumberField,
   Segmented,
   SelectField,
   TextField,
-} from '../components/form';
-import { appendNote, copyText, notify } from '../lib/storage';
+} from './host';
 import { eastWest, mul, pad3, parseMgrs, type NorthReference } from './geo';
 import type { HlzGeom } from './hlz';
 import {
@@ -97,8 +114,8 @@ export const HlzForm = ({
   return (
     <>
       <Block
-        theme="blue"
-        letter="LZ"
+        theme="admin"
+        letter={<IconHlz />}
         name="ZONE & LANDING POINTS"
         desc="Name, grid, LP size, formation"
         defaultOpen
@@ -199,8 +216,8 @@ export const HlzForm = ({
       </Block>
 
       <Block
-        theme="green"
-        letter="↗"
+        theme="admin"
+        letter={<IconWindsock />}
         name="APPROACH, DEPARTURE & WIND"
         desc="Enter °M — drawn against grid north"
       >
@@ -266,8 +283,8 @@ export const HlzForm = ({
       </Block>
 
       <Block
-        theme="red"
-        letter="▲"
+        theme="admin"
+        letter={<IconTree />}
         name="OBSTACLES"
         desc={`${h.obstacles.length} plotted · 10:1 approach / departure check`}
       >
@@ -344,8 +361,8 @@ export const HlzForm = ({
       </Block>
 
       <Block
-        theme="amber"
-        letter="◎"
+        theme="admin"
+        letter={<IconMarking />}
         name="MARKING, SURFACE & CONTROL"
         desc="Panels, smoke, IR · ground · who runs the zone"
       >
@@ -402,8 +419,8 @@ export const HlzForm = ({
       </Block>
 
       <Block
-        theme="purple"
-        letter="SEC"
+        theme="admin"
+        letter={<IconShield />}
         name="SECURITY, LOAD POINT & CCP"
         desc="Positions, casualty loading, litter route"
       >
@@ -475,8 +492,8 @@ export const CcpForm = ({ plan, update }: { plan: CasevacPlan; update: Update })
   return (
     <>
       <Block
-        theme="red"
-        letter="CCP"
+        theme="admin"
+        letter={<IconCcp />}
         name="CASUALTY COLLECTION POINT"
         desc="Name, grid, location, flow"
         defaultOpen
@@ -523,8 +540,8 @@ export const CcpForm = ({ plan, update }: { plan: CasevacPlan; update: Update })
       </Block>
 
       <Block
-        theme="amber"
-        letter="▦"
+        theme="admin"
+        letter={<IconLayout />}
         name="AREAS"
         desc="Toggle optional areas · drag on the sketch"
       >
@@ -558,8 +575,8 @@ export const CcpForm = ({ plan, update }: { plan: CasevacPlan; update: Update })
       </Block>
 
       <Block
-        theme="blue"
-        letter="HM"
+        theme="admin"
+        letter={<IconMedic />}
         name="STAFF & MARKING"
         desc="Who triages, treats, carries, tracks"
       >
@@ -590,8 +607,8 @@ export const CcpForm = ({ plan, update }: { plan: CasevacPlan; update: Update })
       </Block>
 
       <Block
-        theme="purple"
-        letter="SEC"
+        theme="admin"
+        letter={<IconShield />}
         name="SECURITY & NOTES"
         desc={`${c.security.length} security positions`}
       >
@@ -679,8 +696,8 @@ export const RouteForm = ({
   return (
     <>
       <Block
-        theme="blue"
-        letter="⇢"
+        theme="admin"
+        letter={<IconChain />}
         name="EVACUATION CHAIN"
         desc={`${r.nodes.length} nodes · POI → surgical ${t.toSurgicalMin === null ? '—' : fmtMin(t.toSurgicalMin)}`}
         defaultOpen
@@ -809,8 +826,8 @@ export const RouteForm = ({
       </Block>
 
       <Block
-        theme="green"
-        letter="P"
+        theme="admin"
+        letter={<IconPace />}
         name="PACE & PRECEDENCE"
         desc="Primary · Alternate · Contingency · Emergency"
       >
@@ -876,8 +893,8 @@ export const NineLineForm = ({ plan, update }: { plan: CasevacPlan; update: Upda
   return (
     <>
       <Block
-        theme="red"
-        letter="9"
+        theme="admin"
+        letter={<IconRadio />}
         name="9-LINE MEDEVAC"
         desc="Fill it out before you key the handset"
         defaultOpen
@@ -1032,8 +1049,8 @@ export const NineLineForm = ({ plan, update }: { plan: CasevacPlan; update: Upda
       </Block>
 
       <Block
-        theme="blue"
-        letter="MIST"
+        theme="admin"
+        letter={<IconMist />}
         name="MIST REPORTS"
         desc="One per casualty, after the 9-line"
       >
@@ -1144,7 +1161,7 @@ export const ParaForm = ({
   return (
     <>
       <Block
-        theme="amber"
+        theme="admin"
         letter="4a"
         name="CASEVAC PARAGRAPH"
         desc="Graded items (1)–(7) of Admin & Logistics"
@@ -1198,8 +1215,8 @@ export const ParaForm = ({
         />
       </Block>
       <Block
-        theme="slate"
-        letter="i"
+        theme="ref"
+        letter={<IconHeader />}
         name="SHEET TITLE BLOCK"
         desc="Unit, preparer, banner on every export"
       >
