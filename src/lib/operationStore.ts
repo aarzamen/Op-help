@@ -287,6 +287,45 @@ export class OperationStore {
       for (const key of this.dataKeys(meta)) this.storage.removeItem(key);
     });
   }
+  /** Explicit user-requested wipe. Corrupt metadata must not prevent erasing local data. */
+  wipe(): Promise<void> {
+    return this.withLock(() => {
+      const previous = this.storage.getItem(OPERATIONS_KEY) ?? '';
+      let generation = '';
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = this.newId();
+        if (
+          validId(candidate) &&
+          candidate !== 'legacy' &&
+          !previous.includes(JSON.stringify(candidate))
+        ) {
+          generation = candidate;
+          break;
+        }
+      }
+      if (!generation) throw new Error('Could not invalidate old editing tabs. Nothing was wiped.');
+      // Commit a fresh generation first: stale tabs cannot recreate erased operational data.
+      this.saveIndex({
+        v: 1,
+        activeId: 'default',
+        items: [{ id: 'default', name: 'Default operation', createdAt: this.now(), generation }],
+      });
+      for (const key of this.keys()) {
+        if (
+          isOperationKey(key) ||
+          key.startsWith('op:') ||
+          key === STAGING_KEY ||
+          PREFERENCE_KEYS.includes(key as (typeof PREFERENCE_KEYS)[number])
+        ) {
+          this.storage.removeItem(key);
+          if (this.storage.getItem(key) !== null)
+            throw new Error(
+              'Some saved data could not be wiped. Keep this page open and try again.'
+            );
+        }
+      }
+    });
+  }
   snapshot(id: string): OperationSnapshot {
     const meta = this.find(this.readIndex(), id);
     const prefix = this.prefix(meta);
