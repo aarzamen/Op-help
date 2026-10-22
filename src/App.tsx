@@ -72,6 +72,15 @@ export default function App() {
   const [isBlackoutMode, setIsBlackoutMode] = useLocalStorage<boolean>('blackout-mode', false);
   const [exporting, setExporting] = useState(false);
 
+  // A link pasted into a tab that already has the app open only changes the fragment.
+  useEffect(() => {
+    const onHash = () => {
+      if (incomingPayload() !== null) setLinkOpen(true);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   useEffect(() => {
     if (isBlackoutMode) document.documentElement.setAttribute('data-theme', 'blackout');
     else document.documentElement.removeAttribute('data-theme');

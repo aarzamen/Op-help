@@ -43,7 +43,7 @@ Speech framework provides and the browser cannot.
 
 ## 2. The hard constraint (feasibility)
 
-A web app — whether served by Google AI Studio, a PWA, or plain Safari — **cannot
+A web app — whether served from a static host, installed as a PWA, or opened in plain Safari — **cannot
 import Apple's `Speech` or `FoundationModels` Swift frameworks.** Those are native. To
 use Apple-native ASR you must ship a **native iOS host** that runs the React build in a
 `WKWebView` and bridges JS↔Swift. There is no web-only path to on-device Apple ASR.
@@ -51,14 +51,14 @@ use Apple-native ASR you must ship a **native iOS host** that runs the React bui
 This is a **significant scope addition**, not a code tweak:
 - A separate Xcode/iOS project, Apple Developer Program membership ($99/yr), code
   signing, and a distribution channel (TestFlight / ad-hoc / MDM).
-- **Two surfaces to maintain:** the web app (AI Studio preview + browser fallback) and
+- **Two surfaces to maintain:** the web app (hosted site + browser fallback) and
   the native iOS wrapper (Apple ASR). The web preview's "share a URL" simplicity is
   lost for the native build.
 - Decide whether the native wrapper loads a **bundled** copy of the build (true offline)
   or a **hosted** URL (needs network for the UI). For field use, bundle it.
 
 **Update — the native host already exists: Appifier.** The maintainer's `appifier` tool
-wraps a Vite/React build (including Google AI Studio exports) into a **development-signed
+wraps a Vite/React build (including this one) into a **development-signed
 iOS `.ipa`** via a parameterized `WKWebView` template (`ios-template/`), and it already
 solves the `file://` null-origin gotcha by **inlining** the built entry JS/CSS (WKWebView
 won't execute external ES-module scripts under `file://`). So the build/sign/install
@@ -81,14 +81,14 @@ at runtime. Backends:
 
 | Provider | Where it runs | On-device? |
 |---|---|---|
-| **WebSpeechProvider** (existing) | AI Studio preview, desktop/Android browsers | No (cloud) |
+| **WebSpeechProvider** (existing) | the hosted web app, desktop/Android browsers | No (cloud) |
 | **AppleBridgeProvider** (new) | native iOS WKWebView wrapper | Yes (Apple Speech) |
 | *(future)* Whisper/edge/cloud | anywhere | varies |
 
 Detection: `AppleBridgeProvider` is selected iff
 `window.webkit?.messageHandlers?.opordSpeech` exists (only true inside the native
 shell); otherwise fall back to `WebSpeechProvider`. **Never remove the web fallback** —
-it's what keeps AI Studio + browsers working.
+it's what keeps the hosted web app and plain browsers working.
 
 ### 3a. Native host: use Appifier (the in-house tool)
 
@@ -265,7 +265,7 @@ Surface a visible diff (raw vs cleaned) so the operator can verify nothing was i
 ## 9. Acceptance criteria
 
 1. Existing DICTATE buttons still work; localStorage note behavior unchanged.
-2. Browser Web Speech remains the fallback; AI Studio preview is unaffected.
+2. Browser Web Speech remains the fallback; the hosted web app is unaffected.
 3. Multiple DICTATE buttons no longer cross-wire (per-`targetId` routing).
 4. In the native wrapper, DICTATE prompts for mic + speech permission.
 5. Apple Speech returns partial (live display) and final (appended) transcripts.

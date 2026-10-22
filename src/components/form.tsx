@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 
 /** Compact labeled inputs for the planning forms (CASEVAC, tasking builder, order header). */
 
@@ -67,6 +67,10 @@ export const NumberField = ({
   unit?: string;
 }) => {
   const id = useId();
+  // While focused the field shows what was typed, not the parent's (possibly clamped) value:
+  // otherwise typing "12" into a min-4 field clamps the "1" to 4 and ends up as "42".
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = Number.isFinite(value) ? String(value) : '';
   return (
     <div className="field">
       <label htmlFor={id} className="field-label">
@@ -78,12 +82,16 @@ export const NumberField = ({
         type="number"
         inputMode="decimal"
         className="field-input field-mono"
-        value={Number.isFinite(value) ? value : ''}
+        value={draft ?? shown}
         min={min}
         max={max}
         step={step}
+        onFocus={() => setDraft(shown)}
+        onBlur={() => setDraft(null)}
         onChange={(e) => {
-          const v = e.target.value === '' ? 0 : Number(e.target.value);
+          setDraft(e.target.value);
+          if (e.target.value === '') return; // keep the last value until something is typed
+          const v = Number(e.target.value);
           if (Number.isFinite(v)) onChange(v);
         }}
       />

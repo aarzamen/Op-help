@@ -1,0 +1,16 @@
+{
+  "name": "OPORD Analyst",
+  "short_name": "OPORD",
+  "description": "Write and brief a five-paragraph order: METT-T, the graded checklist, CASEVAC sketches and a tactical reference.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F2F0EB",
+  "theme_color": "#0A2540",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

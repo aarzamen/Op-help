@@ -502,47 +502,233 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
 const isVec = (v: unknown): v is Vec =>
   isObj(v) && Number.isFinite(v.x as number) && Number.isFinite(v.y as number);
-/** Keep an array only if every entry is an object with a numeric `pos` (when `withPos`). */
-const arr = <T>(v: unknown, fallback: T[], withPos = true): T[] =>
-  Array.isArray(v) && v.every((e) => isObj(e) && (!withPos || isVec(e.pos)))
-    ? (v as T[])
-    : fallback;
+
+// ----- validation of plans from storage, a shared link or a file -----
+
+/** ±100 km from the sheet's reference grid covers any CASEVAC chain; beyond it the
+ * gridline loops and fit math get absurd (a node at 1e12 m hangs the tab). */
+const COORD_MAX = 100_000;
+const TEXT_MAX = 4000;
+const LIST_MAX = 100;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const num = (v: unknown, d: number, lo = -Infinity, hi = Infinity) =>
+  typeof v === 'number' && Number.isFinite(v) ? clamp(v, lo, hi) : d;
+const text = (v: unknown, d = '') => (typeof v === 'string' ? v.slice(0, TEXT_MAX) : d);
+const vec = (v: unknown, d: Vec): Vec =>
+  isVec(v) ? { x: clamp(v.x, -COORD_MAX, COORD_MAX), y: clamp(v.y, -COORD_MAX, COORD_MAX) } : d;
+const oneOf = <T>(v: unknown, allowed: readonly T[], d: T): T =>
+  allowed.includes(v as T) ? (v as T) : d;
+const heading = (v: unknown, d: number) => {
+  const n = num(v, d);
+  return ((n % 360) + 360) % 360;
+};
 
 /**
- * Fill any fields a previous version didn't have and drop malformed collections, so a plan
- * from storage, a shared link or a file can't crash the sketches. Returns null when `raw`
- * isn't a v1 plan at all.
+ * Copy `raw` onto the shape of `base`: the same keys with the same scalar types, anything
+ * missing or mistyped taken from `base`. Arrays are left at `base` for the caller to check.
+ */
+function shaped<T>(base: T, raw: unknown): T {
+  if (typeof base === 'string') return text(raw, base) as T;
+  if (typeof base === 'number') return num(raw, base) as T;
+  if (typeof base === 'boolean') return (typeof raw === 'boolean' ? raw : base) as T;
+  if (Array.isArray(base) || !isObj(base)) return base;
+  const src = isObj(raw) ? raw : {};
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(base)) out[k] = shaped(base[k], src[k]);
+  return out as T;
+}
+
+/** Valid entries of a list (bad ones dropped); `fallback` when it isn't a list at all. */
+function list<T>(raw: unknown, entry: (e: Record<string, unknown>) => T | null, fallback: T[]) {
+  if (!Array.isArray(raw)) return fallback;
+  return raw
+    .slice(0, LIST_MAX)
+    .map((e) => (isObj(e) ? entry(e) : null))
+    .filter((e): e is T => e !== null);
+}
+
+/** Ids are selection and React keys: give blank or repeated ones a fresh id. */
+function uniqueIds<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.map((it) => {
+    const id = it.id && !seen.has(it.id) ? it.id : newId();
+    seen.add(id);
+    return id === it.id ? it : { ...it, id };
+  });
+}
+
+const strings = (v: unknown, d: string[]) =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : d;
+
+const OBSTACLE_KIND_IDS = OBSTACLE_KINDS.map((o) => o.kind);
+const NODE_KIND_IDS = NODE_KINDS.map((k) => k.kind);
+const LEG_MODE_IDS = LEG_MODES.map((m) => m.mode);
+const FLOW_AZ = [0, 90, 180, 270] as const;
+
+function marker(e: Record<string, unknown>): Marker | null {
+  if (!isVec(e.pos)) return null;
+  return { id: text(e.id), pos: vec(e.pos, { x: 0, y: 0 }), label: text(e.label, 'SEC') };
+}
+
+function normalizeHlz(raw: unknown, base: HlzSheet): HlzSheet {
+  const r = isObj(raw) ? raw : {};
+  const h = shaped(base, r);
+  return {
+    ...h,
+    lpSize: oneOf(r.lpSize, [1, 2, 3, 4, 5] as const, base.lpSize),
+    lpCount: Math.round(num(r.lpCount, base.lpCount, 1, 8)),
+    formation: oneOf(r.formation, ['trail', 'abreast'] as const, base.formation),
+    lpSpacing: num(r.lpSpacing, base.lpSpacing, 0, 5000),
+    zoneW: num(r.zoneW, base.zoneW, 10, 5000),
+    zoneL: num(r.zoneL, base.zoneL, 10, 5000),
+    approachMag: heading(r.approachMag, base.approachMag),
+    departureMag: heading(r.departureMag, base.departureMag),
+    windFromMag: heading(r.windFromMag, base.windFromMag),
+    windKts: num(r.windKts, base.windKts, 0, 200),
+    markDay: strings(r.markDay, base.markDay),
+    markNight: strings(r.markNight, base.markNight),
+    obstacles: uniqueIds(
+      list(
+        r.obstacles,
+        (e): Obstacle | null =>
+          isVec(e.pos)
+            ? {
+                id: text(e.id),
+                kind: oneOf(e.kind, OBSTACLE_KIND_IDS, 'other'),
+                pos: vec(e.pos, { x: 0, y: 0 }),
+                heightM: num(e.heightM, 10, 0, 1000),
+                note: text(e.note),
+              }
+            : null,
+        base.obstacles
+      )
+    ),
+    security: uniqueIds(list(r.security, marker, base.security)),
+    loadPoint: vec(r.loadPoint, base.loadPoint),
+    ccpPos: vec(r.ccpPos, base.ccpPos),
+  };
+}
+
+function normalizeCcp(raw: unknown, base: CcpSheet): CcpSheet {
+  const r = isObj(raw) ? raw : {};
+  const c = shaped(base, r);
+  const flowAz = oneOf(r.flowAz, FLOW_AZ, base.flowAz);
+  const given = Array.isArray(r.areas) ? r.areas.filter(isObj) : null;
+  // Always exactly the template's areas, one per kind: unknown kinds are dropped and
+  // missing ones come back in their default place for this flow direction.
+  const areas = ccpLayout(flowAz).map((d) => {
+    const a = given?.find((x) => x.kind === d.kind);
+    if (!a || !isVec(a.pos)) return d;
+    return {
+      kind: d.kind,
+      enabled: d.kind === 'triage' || typeof a.enabled !== 'boolean' ? d.enabled : a.enabled,
+      pos: vec(a.pos, d.pos),
+      w: num(a.w, d.w, 4, 500),
+      h: num(a.h, d.h, 4, 500),
+    };
+  });
+  return { ...c, flowAz, areas, security: uniqueIds(list(r.security, marker, base.security)) };
+}
+
+function normalizeRoute(raw: unknown, base: RouteSheet): RouteSheet {
+  const r = isObj(raw) ? raw : {};
+  const route = shaped(base, r);
+  const nodes = uniqueIds(
+    list(
+      r.nodes,
+      (e): RouteNode | null =>
+        isVec(e.pos)
+          ? {
+              id: text(e.id),
+              kind: oneOf(e.kind, NODE_KIND_IDS, 'other'),
+              name: text(e.name),
+              grid: text(e.grid),
+              note: text(e.note),
+              pos: vec(e.pos, { x: 0, y: 0 }),
+            }
+          : null,
+      []
+    )
+  );
+  const legs = list(
+    r.legs,
+    (e): RouteLeg => ({
+      mode: oneOf(e.mode, LEG_MODE_IDS, 'ground'),
+      distKm: num(e.distKm, 0, 0, 20000),
+      timeMin: num(e.timeMin, 0, 0, 10000),
+      route: text(e.route),
+      net: text(e.net),
+      platform: text(e.platform),
+    }),
+    []
+  );
+  // legs[i] joins nodes[i] → nodes[i + 1]; if that no longer holds, start from the example.
+  const chainOk = nodes.length >= 2 && legs.length === nodes.length - 1;
+  return {
+    ...route,
+    layout: oneOf(r.layout, ['schematic', 'map'] as const, base.layout),
+    priorityHours: num(r.priorityHours, base.priorityHours, 0, 72),
+    nodes: chainOk ? nodes : base.nodes,
+    legs: chainOk ? legs : base.legs,
+  };
+}
+
+function normalizeNineLine(raw: unknown, base: NineLine): NineLine {
+  const r = isObj(raw) ? raw : {};
+  const n = shaped(base, r);
+  const count = (v: number) => Math.round(clamp(v, 0, 99));
+  const counts = <K extends string>(rec: Record<K, number>) =>
+    Object.fromEntries(Object.entries(rec).map(([k, v]) => [k, count(v as number)])) as Record<
+      K,
+      number
+    >;
+  return {
+    ...n,
+    line3: counts(n.line3),
+    line8: counts(n.line8),
+    line5L: count(n.line5L),
+    line5A: count(n.line5A),
+    line4: oneOf(r.line4, ['A', 'B', 'C', 'D'] as const, base.line4),
+    line6War: oneOf(r.line6War, ['N', 'P', 'E', 'X'] as const, base.line6War),
+    line7: oneOf(r.line7, ['A', 'B', 'C', 'D', 'E'] as const, base.line7),
+    line9War: oneOf(r.line9War, ['', 'N', 'B', 'C'] as const, base.line9War),
+    mist: uniqueIds(
+      list(
+        r.mist,
+        (e): MistEntry => ({
+          id: text(e.id),
+          zap: text(e.zap),
+          m: text(e.m),
+          i: text(e.i),
+          s: text(e.s),
+          t: text(e.t),
+        }),
+        base.mist
+      )
+    ),
+  };
+}
+
+/**
+ * Check a plan from storage, a shared link or a file field by field against the current
+ * shape: wrong types and unknown enum values fall back to the defaults, bad list entries
+ * are dropped, coordinates are clamped and ids made unique, so nothing that arrives can
+ * crash a sketch or an export. Returns null when `raw` isn't a v1 plan at all.
  */
 export function normalizePlan(raw: unknown): CasevacPlan | null {
   if (!isObj(raw) || raw.v !== 1) return null;
   const base = defaultPlan();
-  const s = raw as Partial<CasevacPlan>;
-  const hlz = { ...base.hlz, ...(isObj(s.hlz) ? s.hlz : {}) };
-  const ccp = { ...base.ccp, ...(isObj(s.ccp) ? s.ccp : {}) };
-  const route = { ...base.route, ...(isObj(s.route) ? s.route : {}) };
-  const nineLine = { ...base.nineLine, ...(isObj(s.nineLine) ? s.nineLine : {}) };
-  hlz.obstacles = arr(hlz.obstacles, base.hlz.obstacles);
-  hlz.security = arr(hlz.security, base.hlz.security);
-  if (!isVec(hlz.loadPoint)) hlz.loadPoint = base.hlz.loadPoint;
-  if (!isVec(hlz.ccpPos)) hlz.ccpPos = base.hlz.ccpPos;
-  ccp.areas = arr(ccp.areas, base.ccp.areas);
-  ccp.security = arr(ccp.security, base.ccp.security);
-  route.nodes = arr(route.nodes, base.route.nodes);
-  route.legs = arr(route.legs, base.route.legs, false);
-  if (route.nodes.length < 2 || route.legs.length !== route.nodes.length - 1) {
-    route.nodes = base.route.nodes;
-    route.legs = base.route.legs;
-  }
-  nineLine.mist = arr(nineLine.mist, base.nineLine.mist, false);
   return {
-    ...base,
-    ...s,
     v: 1,
-    hlz,
-    ccp,
-    route,
-    para: { ...base.para, ...(isObj(s.para) ? s.para : {}) },
-    nineLine,
+    unit: text(raw.unit, base.unit),
+    preparedBy: text(raw.preparedBy, base.preparedBy),
+    banner: text(raw.banner, base.banner),
+    hlz: normalizeHlz(raw.hlz, base.hlz),
+    ccp: normalizeCcp(raw.ccp, base.ccp),
+    route: normalizeRoute(raw.route, base.route),
+    para: shaped(base.para, raw.para),
+    nineLine: normalizeNineLine(raw.nineLine, base.nineLine),
   };
 }
 
@@ -560,11 +746,22 @@ export function normalizeBackground(raw: unknown): Background | null {
   const ok =
     typeof bg.dataUrl === 'string' &&
     /^data:image\/(png|jpe?g|webp|gif);base64,/.test(bg.dataUrl) &&
-    Number.isFinite(bg.aspect) &&
-    Number.isFinite(bg.widthM) &&
+    typeof bg.aspect === 'number' &&
+    bg.aspect > 0 &&
+    bg.aspect < 100 &&
+    typeof bg.widthM === 'number' &&
+    bg.widthM > 0 &&
+    bg.widthM <= 2 * COORD_MAX &&
     isVec(bg.offset) &&
     Number.isFinite(bg.opacity);
-  return ok ? (bg as Background) : null;
+  if (!ok) return null;
+  return {
+    dataUrl: bg.dataUrl as string,
+    aspect: bg.aspect as number,
+    widthM: bg.widthM as number,
+    offset: vec(bg.offset, { x: 0, y: 0 }),
+    opacity: clamp(bg.opacity as number, 0, 1),
+  };
 }
 
 export const loadBackground = (sheet: SheetId): Background | null =>

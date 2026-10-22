@@ -83,7 +83,7 @@ export interface InspectorProps {
   plan: CasevacPlan;
   sheet: SheetId;
   item: SketchItem | null;
-  pending: Vec | null;
+  pending: { pos: Vec; after: string | null } | null;
   ctx: ItemCtx;
   hlzGeom: HlzGeom;
   hlzNorth: NorthReference | null;
@@ -111,12 +111,15 @@ export function Inspector(p: InspectorProps) {
   if (p.pending) {
     const opts = addOptions(plan, sheet, p.ctx);
     const groups = [...new Set(opts.map((o) => o.group))];
+    const after = p.pending.after
+      ? plan.route.nodes.find((n) => `node:${n.id}` === p.pending?.after)
+      : null;
     return (
       <div className="ws-inspector">
         <div className="ws-insp-head">
           <span className="ws-insp-kicker">ADD HERE</span>
           <span className="ws-insp-title">
-            {refGrid ? (itemGrid(refGrid, p.pending) ?? 'New item') : 'New item'}
+            {refGrid ? (itemGrid(refGrid, p.pending.pos) ?? 'New item') : 'New item'}
           </span>
           <button type="button" className="icon-btn" aria-label="Cancel" onClick={p.onDeselect}>
             <X size={16} />
@@ -141,6 +144,13 @@ export function Inspector(p: InspectorProps) {
             </div>
           </div>
         ))}
+        {sheet === 'route' && (
+          <div className="field-hint">
+            {after
+              ? `The new stop goes after ${after.name || 'the selected stop'}.`
+              : 'The new stop goes at the end of the chain. Select a stop first to insert after it.'}
+          </div>
+        )}
         {opts.length === 0 && <div className="field-hint">Nothing left to add on this sheet.</div>}
       </div>
     );

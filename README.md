@@ -6,9 +6,9 @@ Order" course teaches and grades it — written so that someone with **no tactic
 background** can follow it end to end. It adds **METT-T** mission analysis, a **CASEVAC
 planner** that draws HLZ, CCP and evacuation-route sketches, and a tactical-reference tab.
 
-It is a **client-only React SPA** — all user data lives in the browser via
-`localStorage`; there is no backend and no third-party API calls. Originally scaffolded
-as a Google AI Studio app, the AI/Gemini scaffolding has been removed.
+It is a **client-only React SPA** built as a static site — all user data lives in the
+browser via `localStorage`; there is no backend and no third-party API calls. After one
+online visit it works **offline**, and it can be installed to a phone's home screen.
 
 ## The five tabs
 
@@ -46,10 +46,19 @@ npm run build      # production build to dist/
 npm run preview    # preview the production build
 npm run typecheck  # tsc --noEmit
 npm run lint       # eslint .
+npm test           # unit tests (Vitest)
 npm run format     # prettier --write .
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck + lint + build on every PR.
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests and build on every PR.
+
+## Deploy
+
+`npm ci && npm run build`, then publish `dist/` on any static host (the target is
+ChatGPT Sites; GitHub Pages, Cloudflare Pages and Netlify work too). Asset paths are
+relative, so it can live at a domain root or a subpath; it needs no server, environment
+variables or rewrite rules. Serve it over HTTPS so the offline service worker, compass
+and GPS work. Details in `AGENTS.md` → *Hosting & deploy*.
 
 ## Project layout & roadmap
 
@@ -63,12 +72,14 @@ CI (`.github/workflows/ci.yml`) runs typecheck + lint + build on every PR.
   (`handoff.ts`) and the PNG/PDF sheet exporter. It reaches the rest of the app only
   through `casevac/host.ts`, so it can be split out later.
 - `src/export/exporters.ts` — copy-as-text and PDF for every tab.
-- `CLAUDE.md` — contributor guide, conventions, storage keys, and the prioritized to-dos.
+- `AGENTS.md` — contributor / agent guide: conventions, storage keys, hosting, the
+  prioritized to-dos and the current handoff notes (`CLAUDE.md` imports it).
+- `tools/` — the build-time service-worker plugin (`serviceWorker.ts`) and worker (`sw.js`).
 - `docs/SPEC-framework-hardening.md` — Milestones B–E (implementable specs).
 - `docs/SPEC-dictation-apple-asr.md` — provider-agnostic dictation + optional Apple ASR.
 - `docs/SPEC-casevac-workspace.md` — the sketch workspace, handoff and print weights.
 - `docs/DESIGN-SYSTEM.md` — what each color means and the icon rules.
 
 > ⚠️ **OPSEC:** operational content is stored **unencrypted** in the browser. Review the
-> handling notes in `CLAUDE.md` before any real-world use. The CASEVAC sheets are
+> handling notes in `AGENTS.md` before any real-world use. The CASEVAC sheets are
 > planning aids — verify grids, headings and LP sizes with aviation and your SOP.

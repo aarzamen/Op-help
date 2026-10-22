@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Vec } from '../geo';
-import { clampCamera, screenToWorld, zoomAt, type Camera, type Size } from './camera';
+import { clampCamera, limitZoom, screenToWorld, zoomAt, type Camera, type Size } from './camera';
 import type { ViewBox } from '../hlz';
 
 /**
@@ -84,6 +84,12 @@ export function useGestures(opts: {
 
     const down = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
+      // Controls laid over the canvas (zoom buttons, banners) get their own clicks: capturing
+      // the pointer here would send the click to the canvas and count it as a map tap.
+      if (
+        (e.target as Element | null)?.closest('button, a, input, select, textarea, [data-overlay]')
+      )
+        return;
       try {
         el.setPointerCapture(e.pointerId);
       } catch {
@@ -113,12 +119,13 @@ export function useGestures(opts: {
       const p = local(e);
       pointers.current.set(e.pointerId, p);
       const m = mode.current;
-      const { handlers, size } = live.current;
+      const { handlers, size, view } = live.current;
       if (m.kind === 'pinch') {
         const [a, b] = [...pointers.current.values()];
         if (!a || !b) return;
         const c = mid(a, b);
-        const z = zoomAt(m.cam0, size, dist(a, b) / m.dist0, m.mid0.x, m.mid0.y);
+        const f = limitZoom(m.cam0, view, size, dist(a, b) / m.dist0);
+        const z = zoomAt(m.cam0, size, f, m.mid0.x, m.mid0.y);
         setCam({ ...z, cx: z.cx - (c.x - m.mid0.x) * z.mpp, cy: z.cy + (c.y - m.mid0.y) * z.mpp });
         return;
       }
@@ -163,7 +170,8 @@ export function useGestures(opts: {
       const m = mode.current;
       if (m.kind === 'pinch') {
         const rest = [...pointers.current.values()];
-        if (rest.length === 1) startPan(rest[0]);
+        if (rest.length >= 2) startPinch();
+        else if (rest.length === 1) startPan(rest[0]);
         else mode.current = { kind: 'idle' };
         return;
       }
@@ -177,10 +185,10 @@ export function useGestures(opts: {
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       const p = local(e);
-      const { cam, size } = live.current;
+      const { cam, size, view } = live.current;
       // Trackpad pinch arrives as ctrl+wheel with small deltas; mouse wheels as larger steps.
       const k = e.ctrlKey ? 0.01 : 0.0015;
-      const factor = Math.exp(-e.deltaY * k);
+      const factor = limitZoom(cam, view, size, Math.exp(-e.deltaY * k));
       if (!e.ctrlKey && (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey)) {
         setCam({ ...cam, cx: cam.cx + (e.deltaX || e.deltaY) * cam.mpp });
         return;

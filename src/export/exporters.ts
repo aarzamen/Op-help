@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import type { ViewId } from '../App';
 import { readItem, readJson, readNote } from '../lib/storage';
 import { CHECKLISTS, getChecklistItemTexts } from '../lib/checklists';
@@ -205,7 +204,9 @@ export function exportText(view: ViewId): string {
   return docText(DOCS[view]!());
 }
 
-function docPdf(d: Doc, fileName: string) {
+async function docPdf(d: Doc, fileName: string) {
+  // Loaded on first export so the PDF library isn't part of the app's startup download.
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   const margin = 20;
   const pageW = doc.internal.pageSize.width;
@@ -312,5 +313,5 @@ export async function exportPdf(view: ViewId): Promise<void> {
     view === 'order'
       ? `OPORD_${fileSlug(readOrderMeta().operation || 'notes')}.pdf`
       : `OPORD_Analyst_${view.toUpperCase()}.pdf`;
-  docPdf(d, name);
+  await docPdf(d, name);
 }

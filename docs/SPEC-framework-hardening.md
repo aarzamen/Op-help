@@ -1,7 +1,7 @@
 # Spec — Framework hardening & remaining roadmap (Milestones B–E)
 
 Status: **proposed** (downstream coding tasks). Companion to the to-do list in
-`CLAUDE.md`. Milestone A (safety hardening, AI strip, real WMM compass, CI/lint) is
+`AGENTS.md`. Milestone A (safety hardening, AI strip, real WMM compass, CI/lint) is
 **done** and merged. This spec expands the remaining items into implementable units with
 approach, files, and acceptance criteria. Roughly highest-impact first.
 
@@ -64,6 +64,11 @@ delete asks confirmation; JSON export then import round-trips an operation exact
 data migrates into "Default operation" with nothing lost.
 
 ### B4. PWA / offline
+**Status: done.** Built by hand instead of `vite-plugin-pwa`: `public/manifest.webmanifest`
++ icons, and `tools/serviceWorker.ts` (a ~40-line Vite plugin) that emits `dist/sw.js` with
+every built file precached; registered in `src/main.tsx` for production builds only.
+Verified: installs from a subpath, second load fully offline (including the CASEVAC
+workspace and PDF export).
 **Problem.** No manifest, no service worker → no guaranteed offline load, undercutting the
 field-use value prop. (Fonts are already self-hosted, so a SW can fully cache the shell.)
 **Approach.** Add `vite-plugin-pwa` (Workbox) with a web app manifest (name, icons,
