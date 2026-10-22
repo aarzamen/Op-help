@@ -131,8 +131,10 @@ const CALLOUT_LABEL: Record<CalloutKind, string> = {
 };
 
 /**
- * Labeled aside. `example` is for text quoted from a past course exercise — it keeps
- * scenario specifics out of the doctrine copy and marks them as examples.
+ * Labeled aside. `tip` is only for points the course instructors made (their notes, lecture
+ * references or grading sheet); use `note` for our own guidance. `example` is for text quoted
+ * from a past course exercise — it keeps scenario specifics out of the doctrine copy and marks
+ * them as examples.
  */
 export const Callout = ({
   kind,

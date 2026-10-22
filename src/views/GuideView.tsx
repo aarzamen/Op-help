@@ -593,7 +593,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           </tr>
         </tbody>
       </table>
-      <Callout kind="tip" title="Where your training transfers directly">
+      <Callout kind="note" title="Where your training transfers directly">
         Human factors in the METT-T Troops analysis (training level, morale, headspace, fatigue) ·
         work/rest and heat · MASCAL triage · humane treatment of detainees and enemy casualties ·
         the CASEVAC plan in ¶4.
