@@ -1,7 +1,6 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { jsPDF } from 'jspdf';
 import monoBoldUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2?url';
 import monoHeavyUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-800-normal.woff2?url';
 import sansUrl from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?url';
@@ -235,6 +234,7 @@ export async function downloadSheetPng(plan: CasevacPlan, sheet: SheetId, bg: Ba
 
 /** The full CASEVAC packet: HLZ, CCP and route sheets, the 9-line card, and the ¶4.a text. */
 export async function downloadCasevacPdf(plan: CasevacPlan, bg: Backgrounds) {
+  const { jsPDF } = await import('jspdf'); // on demand: keeps it out of the startup bundle
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();

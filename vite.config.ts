@@ -1,20 +1,24 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
+import { serviceWorker } from './tools/serviceWorker';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    // Relative asset URLs, so `dist/` works at a domain root or under any subpath
+    // (ChatGPT Sites, GitHub Pages, any static host). The app has no client-side routes.
+    base: './',
+    plugins: [react(), tailwindcss(), serviceWorker()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
+    test: {
+      include: ['src/**/*.test.ts'],
+      environment: 'node',
     },
   };
 });

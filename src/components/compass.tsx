@@ -161,7 +161,9 @@ export const TopCompass = () => {
         );
         if (results.some((r) => r !== 'granted')) {
           setStatusMsg(
-            isInsideFrame() ? 'Motion blocked in preview frame.' : 'Motion permission denied.'
+            isInsideFrame()
+              ? 'Motion blocked inside a frame — open the site directly.'
+              : 'Motion permission denied.'
           );
           return;
         }
@@ -177,7 +179,7 @@ export const TopCompass = () => {
         if (lastHeadingRef.current === null) {
           setStatusMsg(
             isInsideFrame()
-              ? 'No sensor events — open as a standalone app.'
+              ? 'No sensor events — open the site directly.'
               : 'No compass events yet.'
           );
         }
@@ -197,7 +199,9 @@ export const TopCompass = () => {
       }
     } catch (error) {
       console.error('Compass permission error:', error);
-      setStatusMsg(isInsideFrame() ? 'Sensor blocked by app frame.' : 'Compass permission failed.');
+      setStatusMsg(
+        isInsideFrame() ? 'Sensor blocked inside a frame.' : 'Compass permission failed.'
+      );
     }
   };
 

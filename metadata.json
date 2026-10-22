@@ -1,5 +1,0 @@
-{
-  "name": "OPORD Analyst",
-  "description": "Tactical leadership tool for Five Paragraph Orders (SMEAC) and mission analysis.",
-  "requestFramePermissions": ["geolocation", "microphone", "accelerometer", "gyroscope", "magnetometer"]
-}
