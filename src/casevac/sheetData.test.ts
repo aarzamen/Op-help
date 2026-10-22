@@ -81,6 +81,13 @@ describe('briefing text', () => {
       mascal: 'Request augmentation',
       enemyCas: 'Treat, segregate, guard',
     };
+    Object.assign(plan.route, {
+      paceP: 'Primary transport EXAMPLE',
+      paceA: 'Alternate transport EXAMPLE',
+      paceC: 'Contingency transport EXAMPLE',
+      paceE: 'Emergency transport EXAMPLE',
+      priorityHours: 3,
+    });
     const text = casevacParagraph(plan, computeHlz(plan.hlz, null, ''), routeTimeline(plan.route));
     expect([...text.matchAll(/^\((\d)\)/gm)].map((match) => match[1])).toEqual([
       '1',
@@ -91,10 +98,18 @@ describe('briefing text', () => {
       '6',
       '7',
     ]);
-    for (const instruction of Object.values(plan.para)) expect(text).toContain(instruction);
-    for (const key of ['paceP', 'paceA', 'paceC', 'paceE'] as const)
-      expect(text).toContain(plan.route[key]);
-    expect(text).toContain('Urgent / Urgent-surgical ≤ 1 h; Priority ≤ 4 h; Routine ≤ 24 h');
+    expect(text).toContain('(2) Corpsmen. Team assignment');
+    expect(text).toContain('(3) Reporting. Report to RTO');
+    expect(text).toContain('(4) Handling. Triage then move');
+    expect(text).toContain(
+      '(5) Evacuation. (a) Priority of evacuation or mission by part: Cover each phase'
+    );
+    expect(text).toContain('(6) MASCAL. Request augmentation');
+    expect(text).toContain('(7) Enemy casualties. Treat, segregate, guard');
+    expect(text).toContain(
+      'PACE — P: Primary transport EXAMPLE; A: Alternate transport EXAMPLE; C: Contingency transport EXAMPLE; E: Emergency transport EXAMPLE.'
+    );
+    expect(text).toContain('Urgent / Urgent-surgical ≤ 1 h; Priority ≤ 3 h; Routine ≤ 24 h');
     expect(text).toContain('POI → surgical care ≈ 35 min.');
   });
 

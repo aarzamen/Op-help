@@ -24,9 +24,16 @@ describe('CCP flow and geometry', () => {
     expect(rectEdge({ x: 0, y: 0 }, 20, 10, toward)).toEqual(expected);
   });
 
-  it.each([0, 90, 180, 270] as const)('keeps entry and exit on the one-way %s° flow', (flowAz) => {
+  it.each([
+    [0, 0, 1],
+    [90, 1, 0],
+    [180, 0, -1],
+    [270, -1, 0],
+  ] as const)('keeps entry and exit on the one-way %s° flow', (flowAz, east, north) => {
     const sheet = { ...defaultCcp(), flowAz, areas: ccpLayout(flowAz) };
     const geometry = computeCcp(sheet, '', null);
+    expect(geometry.flow.x).toBeCloseTo(east);
+    expect(geometry.flow.y).toBeCloseTo(north);
     const triage = geometry.byKind.triage!;
     const loading = geometry.byKind.loading!;
     const along = (a: { x: number; y: number }, b: { x: number; y: number }) =>
