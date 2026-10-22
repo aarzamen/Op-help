@@ -4,13 +4,25 @@ Guidance for Claude Code (and other agents) working in this repo.
 
 ## What this is
 
-**OPORD Analyst** (`Op-help`) — a mobile-first tactical leadership reference and
-note-taking tool for the **Five Paragraph Order (SMEAC/OSMEAC)** and **METT-T**
-mission-analysis frameworks, with a tactical-reference **TOOLS** tab (OODA, PCC/PCI
-checklists, warfare concepts, tactical control measures, combat orders, and a NATO/
-APP-6 map-symbols appendix). It is a client-only React SPA scaffolded as a Google
-AI Studio app. All user data lives in the browser via `localStorage`; there is no
-backend.
+**OPORD Analyst** (`Op-help`) — a mobile-first reference, worksheet and briefing aid for
+writing and briefing a **five-paragraph order** (Orientation + SMEAC) the way the EULC
+"Issue a Combat Order" course teaches it, with **METT-T** mission analysis, a **CASEVAC**
+planner that draws HLZ / CCP / evacuation-route sketches, and a tactical-reference
+**TOOLS** tab (PCC/PCI checklists, order types, tactical control measures, and a NATO/
+APP-6 map-symbols appendix). It is written so someone with **no tactical background**
+(e.g. a clinician in the course) can follow it end to end. It is a client-only React SPA
+scaffolded as a Google AI Studio app. All user data lives in the browser via
+`localStorage`; there is no backend.
+
+Five tabs (bottom nav on phones, top nav ≥ 900 px), one `view` state in `App.tsx`:
+
+| Tab | View file | What it is |
+|---|---|---|
+| GUIDE | `views/GuideView.tsx` | The whole method on one page: 5-step flow, the graded checklist as a rehearsal tracker, taking apart higher's order (specified / implied / essential), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, warfighting concepts, a searchable glossary |
+| ANALYZE | `views/AnalyzeView.tsx` | METT-T worksheet with the course's rules and labeled examples |
+| ORDER | `views/OrderView.tsx` | Orientation + ¶1–5 + time hack, each block listing what the grading sheet checks (with points), TEMPLATE quick-fill, a tasking-statement builder |
+| CASEVAC | `views/CasevacView.tsx` | HLZ, CCP and route sketches (drag markers, overlay a map image), 9-line, and the graded ¶4.a paragraph; PNG per sheet + a packet PDF |
+| TOOLS | `views/ToolsView.tsx` | PCC/PCI, order types, TCMs, map symbols |
 
 > Note: the AI Studio Gemini scaffolding has been **removed** — no `@google/genai`
 > dependency, no `metadata.json` capability, and no build-time key injection. The app
@@ -21,9 +33,10 @@ backend.
 
 - React 19 + TypeScript (`~5.8`), built with Vite 6
 - Tailwind CSS v4 (`@tailwindcss/vite`) plus hand-written rules in `src/index.css`
-- `lucide-react` (icons), `jspdf` (PDF export), `mgrs` (grid conversion), `motion`
+- `lucide-react` (icons), `jspdf` (PDF export), `mgrs` (grid conversion), `geomagnetism`
+  (WMM declination), `motion`
 - Browser APIs: Geolocation, DeviceOrientation (compass), Web Speech (dictation),
-  Clipboard
+  Clipboard, Canvas (sketch → PNG)
 
 ## Commands
 
@@ -39,65 +52,101 @@ npm run format     # prettier --write .
 
 There are no automated tests yet. CI (`.github/workflows/ci.yml`) runs `typecheck`,
 `lint`, and `build` on every PR. Verify behavioral changes by running the app and
-exercising the affected tab.
+exercising the affected tab (phone width *and* desktop, light *and* blackout).
 
 ## Project structure
 
 ```
-index.html          # entry; /src/main.tsx
-src/main.tsx        # React root; ErrorBoundary + self-hosted @fontsource imports
-src/App.tsx         # the bulk of the app (~1.4k lines): all views, components, export logic
-src/MapSymbols.tsx  # NATO/APP-6 map-symbol glyphs + MapSymbolsSection (TOOLS appendix)
-src/ErrorBoundary.tsx       # top-level error boundary (wraps <App/> in main.tsx)
-src/globals.d.ts    # ambient types: native ASR bridge (window.webkit) + Web Speech
-src/index.css       # design tokens (:root), component CSS, blackout theme, map-symbols
-metadata.json       # AI Studio app manifest (name, permissions)
-vite.config.ts      # Vite/Tailwind config
-eslint.config.js    # flat ESLint config
-.github/workflows/ci.yml    # CI: typecheck + lint + build
-docs/INTEGRATION_PROMPT.md  # spec for the map-symbols integration
-docs/SPEC-dictation-apple-asr.md   # downstream spec: provider-agnostic ASR + Apple-native backend
-docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardening / roadmap)
+index.html                 # entry; /src/main.tsx; favicon, viewport-fit=cover
+public/favicon.svg
+src/main.tsx               # React root; ErrorBoundary + self-hosted @fontsource imports
+src/App.tsx                # shell only: header (clock, compass, blackout, PDF, copy), nav, view switch, toast
+src/views/                 # one file per tab (Guide, Analyze, Order, Casevac, Tools)
+src/components/
+  ui.tsx                   # Block / SubBlock accordions, LeafItem, Callout, SectionLabel, Info
+  notes.tsx                # InlineNotes (TEMPLATE + DICTATE), NotesBlock, useDictation
+  form.tsx                 # TextField, NumberField, SelectField, CheckGroup, Segmented, FieldRow
+  compass.tsx              # TopCompass (G/M arrows, real G-M angle), GetGridButton
+  EditableChecklist.tsx    # PCC/PCI lists ({id, text}[])
+  TaskingBuilder.tsx       # "[Unit]. You are the main effort. Upon …, <task> IOT <purpose>."
+  GuideWidgets.tsx         # RubricChecklist, Glossary, TaskVerbList
+src/content/               # doctrinal content as data: rubric, templates, tactical tasks, glossary
+src/lib/                   # storage (notify, safeSetItem, appendNote, useLocalStorage, copyText),
+                           # checklists, orderMeta, pdfText (WinAnsi-safe), dtg, useMediaQuery
+src/export/exporters.ts    # copy-as-text + PDF for every tab (reads localStorage, not React state)
+src/casevac/               # the CASEVAC planner (see below)
+src/MapSymbols.tsx         # NATO/APP-6 map-symbol glyphs + MapSymbolsSection (TOOLS appendix)
+src/ErrorBoundary.tsx      # top-level error boundary (wraps <App/> in main.tsx)
+src/globals.d.ts           # ambient types: native ASR bridge, Web Speech, app CustomEvents
+src/index.css              # design tokens (:root), components, blackout theme, map-symbols
+metadata.json              # AI Studio app manifest (name, permissions)
+docs/                      # specs: map-symbols integration, dictation/ASR, hardening (B–E)
 ```
 
 ## Architecture & conventions (read before editing)
 
-- **One big component file.** `src/App.tsx` holds `App` plus every sub-component
-  (`Block`, `SubBlock`, `LeafItem`, `EditableChecklist`, `InlineNotes`, `NotesBlock`,
-  `TopCompass`, the `useLocalStorage`/`useDictation` hooks, and PDF/clipboard export).
-  Three views switch off a single `view` state: `'smeac' | 'mettt' | 'tools'`.
+- **Views are thin; content is data.** Doctrinal text that is listed, scored or searched
+  lives in `src/content/*` (rubric with point values, note templates, task verbs,
+  glossary). Prose explanations live in the view JSX.
 - **Persistence is `localStorage`, by key convention:**
-  - `inline-note-<id>` — per-section note fields (e.g. `inline-note-osmeac-o`)
-  - `notes-<view>` — the free-text NotesBlock per view (`notes-smeac`, etc.)
-  - `pcc-*` / `pci-*` — editable checklist contents (`{id, text}[]`; storage keys are
-    centralized in the `CHECKLIST_KEYS` const, referenced by both the JSX and exporters)
-  - `insert-note` is a `window` CustomEvent used to push text (e.g. a fetched MGRS
-    grid) into an `InlineNotes` field by `id`.
-- **Toast + safe writes.** Use the module-level `notify(msg, type)` to surface a
-  transient toast from anywhere (App renders it via the `app-toast` event), and
-  `safeSetItem` for `localStorage` writes so a `QuotaExceededError` can't break typing.
-- **Dictation is provider-agnostic.** `useDictation` uses a native Apple-Speech bridge
-  (`window.webkit.messageHandlers.opordSpeech` + the `opord-asr-result` event) when inside
-  a WKWebView host, else the browser Web Speech API; each instance has a stable `useId`
-  `targetId` so DICTATE buttons don't cross-wire. See `docs/SPEC-dictation-apple-asr.md`.
-- **Export reads `localStorage` directly** (not React state) in `generateExportText`
-  and `handleExportPDF`. If you add a new note field, wire it into both exporters.
-- **Theming via CSS variables.** Light theme is the `:root` block in `index.css`.
-  **Blackout mode** sets `data-theme="blackout"` on `<html>`, which remaps every
-  `--accent-*`/text/`--bg` token to red-on-black. Prefer existing tokens so new UI
-  inherits blackout for free — avoid hardcoded colors and per-element blackout rules.
-- **TOOLS sections** are a `.section-label` followed by `.block` cards, rendered as
-  siblings inside `.scroll-area`. `MapSymbolsSection` follows this pattern and renders
-  its own label.
-- **Domain accuracy matters.** This is doctrinal military content (SMEAC, METT-T,
-  SALUTE/DRAWD, KOCOA, TCMs, APP-6 symbology). Preserve correct terminology and
-  meaning; don't paraphrase doctrine loosely.
+  - `inline-note-<id>` — per-section note fields (`osmeac-o`, `osmeac-s-to|en|fr|ad`,
+    `osmeac-m`, `osmeac-e-ci|co|tk|fs|coord`, `osmeac-a`, `osmeac-c`, `mettt-*`)
+  - `notes-<view>` — the free-text NotesBlock per view (`notes-smeac`, `notes-mettt`,
+    `notes-tools`; the ORDER tab still uses `smeac` and ANALYZE `mettt` so old notes survive)
+  - `pcc-*` / `pci-*` — editable checklists (`{id, text}[]`, keys in `CHECKLIST_KEYS`)
+  - `order-meta` (unit, operation, banner), `brief-rubric` (checked items + section
+    owners), `tasking-builder` (draft), `active-view`, `blackout-mode`
+  - `casevac-plan` (versioned `CasevacPlan`), `casevac-bg-{hlz|ccp|route}` (overlay
+    image, downscaled JPEG data URL), `casevac-sub` (open sheet)
+- **Pushing text into a note:** call `appendNote(id, text)` (`lib/storage.ts`). It writes
+  storage first and then fires the `note-changed` event, so a mounted `InlineNotes`
+  reloads and an unmounted one picks it up on mount (this replaced the old `insert-note`
+  event, whose appends were lost when the target tab wasn't mounted).
+- **Toast + safe writes.** Use `notify(msg, type)` for a transient toast (App renders it
+  via the `app-toast` event), and `safeSetItem` for every `localStorage` write so a
+  `QuotaExceededError` can't break typing.
+- **Dictation is provider-agnostic.** `useDictation` (in `components/notes.tsx`) uses the
+  native Apple-Speech bridge (`window.webkit.messageHandlers.opordSpeech` + the
+  `opord-asr-result` event) inside a WKWebView host, else the browser Web Speech API;
+  each instance has a stable `useId` `targetId`. See `docs/SPEC-dictation-apple-asr.md`.
+- **Export reads `localStorage` directly** (`src/export/exporters.ts`). If you add a note
+  field, add it to the matching `*Doc()` builder; PDF text goes through `pdfSafe`
+  (jsPDF's built-in fonts are WinAnsi — arrows, ✓, ≤ etc. are mapped to ASCII).
+- **Theming via CSS variables.** Light theme is `:root` in `index.css`; **blackout** sets
+  `data-theme="blackout"` on `<html>` and remaps every token to red-on-black. Use tokens
+  (including the sketch / triage / callout tokens) so new UI inherits blackout for free.
+- **Accordions are real buttons.** `Block` / `SubBlock` headers are `<button
+  aria-expanded>`; closed bodies are `inert` and animate with a grid-row transition.
+- **Domain accuracy matters.** Doctrinal content (SMEAC, METT-T, KOCOA, TCMs, APP-6, the
+  9-line, LP sizes, triage) must keep correct terminology. Course-exercise specifics are
+  shown as labeled EXAMPLE callouts, never as doctrine.
+
+### CASEVAC module (`src/casevac/`)
+
+- **World coordinates are meters, x east / y north, origin at the sheet's reference grid**
+  (HLZ center, CCP grid, or route origin). SVG is y-down, so draw with `-y` (`pts()` in
+  `geo.ts`, `Txt`/`Arrow` in `svg.tsx` take world coords).
+- `geo.ts` — MGRS parse/format/offset/delta (planar within a 100 km square), lat/lon,
+  **G-M angle = WMM declination − UTM grid convergence** (`northReference`), mag→grid.
+- `model.ts` — the `CasevacPlan` type, doctrine tables (LP sizes, precedence, markings,
+  node kinds), labeled defaults, `loadPlan`/`savePlan` (merges defaults for old saves).
+- Geometry is pure: `hlz.ts` (`computeHlz`: LPs, zone, corridors, FM 3-21.38 **10:1**
+  checks, wind components), `ccp.ts`, `route.ts` (timeline, golden-hour check),
+  `layout.ts` (label clamping, free spots for the north arrow / wind rose).
+- Layers render geometry: `HlzLayer`, `CcpLayer`, `RouteLayer` (schematic + map) inside
+  `SketchCanvas` (`svg.tsx`: paper, imagery, real MGRS gridlines, north arrow, scale bar,
+  pointer dragging of any `[data-drag]` child).
+- `palette.ts` — `UI_PALETTE` (CSS vars, blackout-aware) vs `PRINT_PALETTE` (hex) for
+  exports. `exportSheet.tsx` renders a 1600×1000 sheet → embeds the fonts → PNG at 2×;
+  the packet PDF is three sheets + the 9-line card + ¶4.a (images deflated, ~1 MB).
+- `sheetData.ts` — the data-block lines, the read-aloud 9-line script (JTS card format,
+  wartime/peacetime lines 6 and 9), and the graded ¶4.a paragraph text.
 
 ---
 
 ## Tasks & to-dos
 
-### Task 1 — Integrate the map-symbols reference (DONE in this change)
+### Task 1 — Integrate the map-symbols reference (DONE)
 
 - [x] Add `src/MapSymbols.tsx`, append its CSS to `src/index.css`, and render
       `<MapSymbolsSection />` at the bottom of the TOOLS tab (placed after
@@ -111,6 +160,39 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
 - Acceptance: TOOLS tab shows a "MAP SYMBOLS" 4-column grid of 12 cards; friendly =
   rectangle, hostile = diamond; BN COC = two echelon ticks, CO COC = one; toggling
   blackout turns all 12 glyphs (including the red cross) red; labels in JetBrains Mono.
+
+### Task 2 — CASEVAC planner, orders-writing GUIDE, IA reshuffle (DONE in this change)
+
+- [x] **Information architecture.** Five tabs in workflow order — GUIDE → ANALYZE →
+      ORDER → CASEVAC → TOOLS — replacing SMEAC / METT-T / TOOLS. `App.tsx` split from
+      ~1.4k lines into `views/`, `components/`, `content/`, `lib/`, `export/`. Persisted
+      keys are unchanged, so existing notes and checklists carry over.
+- [x] **ORDER tab follows the EULC format**: Orientation (briefed first), ¶1–¶5, time
+      hack; each block lists what the grading sheet checks, with points; TEMPLATE fills
+      a note with the expected outline; ¶1 gains Task Organization, ¶3 gains Fire
+      Support; the tasking-statement builder writes into ¶3 Tasks; order header (unit,
+      operation, classification banner) prints on the PDF.
+- [x] **GUIDE tab** — an orders-writing reference for a novice: the graded checklist as a
+      rehearsal tracker (assign sections, check off, points covered), taking apart
+      higher's order (five questions for implied tasks + the "don't brief what training
+      covers" filter), writing formulas, task verbs, the terrain-model brief (build / run
+      / split four ways / common mistakes), a clinical-practice translation table, and a
+      searchable glossary.
+- [x] **CASEVAC planner** — HLZ overhead sketch (LP size/count/formation, corridors,
+      10:1 obstacle check, wind components, markings, security, litter route), CCP
+      layout (one-way flow, triage areas, evac lanes by precedence), evacuation route
+      (schematic with T+ times and the 1-hour POI→surgical check, or nodes over a map),
+      9-line (JTS card format) with MIST, and the graded ¶4.a paragraph with
+      INSERT INTO ORDER. Markers drag; a map screenshot or terrain-model photo can be
+      overlaid and scaled. PNG per sheet; packet PDF.
+- [x] **Cut / moved:** exercise-specific strings (unit footer, "In this OPORD …",
+      "relevant in Okinawa") removed or turned into labeled examples; warfighting concepts
+      and OODA moved from TOOLS to GUIDE; course exercise residue in METT-T became
+      EXAMPLE callouts.
+- [x] **Fixes along the way:** grid convergence applied to the compass (G arrow is now
+      grid north); `insert-note` replaced by `appendNote` (no lost appends); accordions
+      and nav are real buttons; 16 px inputs on iOS (no zoom-on-focus); PDF text made
+      WinAnsi-safe.
 
 ### Milestone A — safety & cleanup (DONE)
 
@@ -148,8 +230,8 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
       read (idempotent), and malformed/`id`-less entries are repaired rather than trusted.
 - [ ] B3 (operations namespace + reset + JSON backup), B4 (PWA) — see the hardening spec.
 
-> Also in flight on a separate branch: **dictation Phase 1** (provider-agnostic
-> `useDictation` adapter) — see `docs/SPEC-dictation-apple-asr.md`.
+> **Dictation Phase 1** (provider-agnostic `useDictation` adapter) is merged (#4); the
+> Apple on-device backend is the next phase — see `docs/SPEC-dictation-apple-asr.md`.
 
 ### Remaining issues — roughly highest-impact first
 
@@ -169,14 +251,21 @@ docs/SPEC-framework-hardening.md   # downstream spec: Milestones B–E (hardenin
       which undercuts the field-use value prop. (Fonts are already self-hosted.)
 
 **Accuracy / cleanup**
-- [ ] **Grid vs. true north.** The compass now corrects for magnetic declination (true
-      north). Grid north additionally differs by UTM grid convergence; add it if exact
-      grid bearings are required.
-- [ ] **De-hardcode unit-specifics** baked into the reference: PDF footer
-      `"WCC · SEABEE CONSTRUCTION ORDER"`, `"In this OPORD: MLR Obj 1/2"`, `"BPT task in
-      this OPORD"`, `"relevant in Okinawa"`. Parameterize so the reference is reusable.
-- [ ] **Accessibility:** tabs, bottom nav, and accordions are `<div onClick>` with no
-      keyboard handling or ARIA roles. Make them real buttons / focusable.
-- [ ] **Split `App.tsx`** (~1.4k lines) into components and move the doctrinal content
-      into data; add a test setup (Vitest + RTL). Remaining `@ts-ignore` usages
-      (compass, speech) should be typed properly.
+- [x] **Grid vs. true north.** G-M = WMM declination − UTM grid convergence, in both the
+      compass and the CASEVAC sheets.
+- [x] **De-hardcode unit-specifics** — unit / operation / banner come from the ORDER
+      header; exercise specifics are labeled examples.
+- [x] **Accessibility basics** — nav, tabs and accordions are buttons with
+      `aria-current` / `aria-pressed` / `aria-expanded`; closed panels are `inert`.
+- [x] **Split `App.tsx`** and move doctrinal lists into `src/content/`.
+- [ ] **Tests.** Add Vitest + RTL; the pure CASEVAC geometry (`geo.ts`, `hlz.ts`,
+      `route.ts`, `sheetData.ts`) and `normalizeChecklistItems` are the easy first targets.
+
+**Candidates (proposed, not built)**
+- [ ] **Terrain-model kit printout** — labels for every control measure / unit marker
+      plus the board (grids, astro data, challenge & pass, timeline), from the order.
+- [ ] **Static hosting** (GitHub Pages / Cloudflare Pages) so a classmate can open it
+      on a phone without a dev setup; pairs with B4 (PWA) for offline use.
+- [ ] **Practice mode** — glossary / task-verb flashcards and "find the implied task"
+      drills from the worked examples.
+- [ ] **Brief timer** — per-section timing for rehearsals against the 30–60 min window.
