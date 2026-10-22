@@ -96,7 +96,14 @@ export const RouteSchematic = ({
         // Arrow/Txt take world coords (y up); this schematic is drawn in screen space, so negate y.
         return (
           <g key={i}>
-            <Arrow from={from} to={to} color={st.color} width={2.2} head={9} dash={st.dash} />
+            <Arrow
+              from={from}
+              to={to}
+              color={st.color}
+              width={2.2 * P.lw}
+              head={9 * P.head}
+              dash={st.dash}
+            />
             <Txt
               at={{ x: mid.x, y: -(mid.y - (vertical ? 14 : 13)) }}
               size={fit(mode, fs * 0.82)}
@@ -141,7 +148,7 @@ export const RouteSchematic = ({
               width={boxW}
               height={boxH}
               rx={5}
-              style={{ fill: P.paper, stroke: color, strokeWidth: 2 }}
+              style={{ fill: P.paper, stroke: color, strokeWidth: 2 * P.lw }}
             />
             <rect
               x={p.x - boxW / 2}
@@ -219,20 +226,26 @@ export const RouteSchematic = ({
               const x = boxW / 2 + 92;
               return (
                 <>
-                  <line x1={x} y1={a.y} x2={x} y2={b.y} style={{ stroke: color, strokeWidth: 3 }} />
+                  <line
+                    x1={x}
+                    y1={a.y}
+                    x2={x}
+                    y2={b.y}
+                    style={{ stroke: color, strokeWidth: 3 * P.lw }}
+                  />
                   <line
                     x1={x - 6}
                     y1={a.y}
                     x2={x}
                     y2={a.y}
-                    style={{ stroke: color, strokeWidth: 3 }}
+                    style={{ stroke: color, strokeWidth: 3 * P.lw }}
                   />
                   <line
                     x1={x - 6}
                     y1={b.y}
                     x2={x}
                     y2={b.y}
-                    style={{ stroke: color, strokeWidth: 3 }}
+                    style={{ stroke: color, strokeWidth: 3 * P.lw }}
                   />
                   <Txt
                     at={{ x: 0, y: -((n - 1) * S + boxH / 2 + 24) }}
@@ -249,20 +262,26 @@ export const RouteSchematic = ({
             const y = boxH / 2 + 30;
             return (
               <>
-                <line x1={a.x} y1={y} x2={b.x} y2={y} style={{ stroke: color, strokeWidth: 3 }} />
+                <line
+                  x1={a.x}
+                  y1={y}
+                  x2={b.x}
+                  y2={y}
+                  style={{ stroke: color, strokeWidth: 3 * P.lw }}
+                />
                 <line
                   x1={a.x}
                   y1={y - 6}
                   x2={a.x}
                   y2={y}
-                  style={{ stroke: color, strokeWidth: 3 }}
+                  style={{ stroke: color, strokeWidth: 3 * P.lw }}
                 />
                 <line
                   x1={b.x}
                   y1={y - 6}
                   x2={b.x}
                   y2={y}
-                  style={{ stroke: color, strokeWidth: 3 }}
+                  style={{ stroke: color, strokeWidth: 3 * P.lw }}
                 />
                 <Txt
                   at={{ x: (a.x + b.x) / 2, y: -(y + 16) }}
@@ -287,12 +306,13 @@ export const RouteMapLayer = ({
   route,
   view,
   P,
-  editable,
+  interactive = false,
 }: {
   route: RouteSheet;
   view: ViewBox;
   P: Palette;
-  editable: boolean;
+  /** Workspace mode: tag nodes for selection. */
+  interactive?: boolean;
 }) => {
   const u = view.w / 100;
   return (
@@ -309,8 +329,8 @@ export const RouteMapLayer = ({
               from={a}
               to={b}
               color={st.color}
-              width={u * 0.5}
-              head={u * 2.2}
+              width={u * 0.5 * P.lw}
+              head={u * 2.2 * P.head}
               dash={st.dash ? `${u * 1.6} ${u * 1}` : undefined}
             />
             <Txt at={{ x: mid.x, y: mid.y + u * 2 }} size={u * 1.7} P={P} color={st.color}>
@@ -324,14 +344,14 @@ export const RouteMapLayer = ({
         return (
           <g
             key={node.id}
-            {...(editable ? { 'data-drag': `node:${node.id}` } : {})}
+            {...(interactive ? { 'data-item': `node:${node.id}` } : {})}
             className="sketch-drag"
           >
             <circle
               cx={node.pos.x}
               cy={-node.pos.y}
               r={u * 3}
-              style={{ fill: P.paper, stroke: color, strokeWidth: u * 0.5 }}
+              style={{ fill: P.paper, stroke: color, strokeWidth: u * 0.5 * P.lw }}
             />
             <Txt at={node.pos} size={u * 1.6} P={P} color={color} halo={false}>
               {badge(node.kind)}

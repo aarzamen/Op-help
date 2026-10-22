@@ -5,11 +5,21 @@ import type { HlzSheet, Obstacle } from './model';
 import type { Palette } from './palette';
 import { Arrow, Txt } from './svg';
 
-const ObstacleGlyph = ({ o, u, color }: { o: Obstacle; u: number; color: string }) => {
+const ObstacleGlyph = ({
+  o,
+  u,
+  color,
+  lw,
+}: {
+  o: Obstacle;
+  u: number;
+  color: string;
+  lw: number;
+}) => {
   const x = o.pos.x;
   const y = -o.pos.y;
   const s = u * 1.6;
-  const stroke = { stroke: color, strokeWidth: u * 0.35, fill: 'none' } as const;
+  const stroke = { stroke: color, strokeWidth: u * 0.35 * lw, fill: 'none' } as const;
   switch (o.kind) {
     case 'trees':
       return (
@@ -69,19 +79,20 @@ export const HlzLayer = ({
   g,
   view,
   P,
-  editable,
+  interactive = false,
   windAt,
 }: {
   hlz: HlzSheet;
   g: HlzGeom;
   view: ViewBox;
   P: Palette;
-  editable: boolean;
+  /** Workspace mode: tag items for selection and draw the heading handles. */
+  interactive?: boolean;
   /** Wind-rose anchor from hlzDecor (kept clear of the corridors and labels). */
   windAt: Vec;
 }) => {
   const u = view.w / 100;
-  const dragAttr = (id: string) => (editable ? { 'data-drag': id } : {});
+  const itemAttr = (id: string) => (interactive ? { 'data-item': id } : {});
   const corridor = (dir: Vec, side: Vec, from: number, to: number, half: number) =>
     pts([
       add(mul(dir, from), mul(side, -half)),
@@ -135,37 +146,44 @@ export const HlzLayer = ({
         style={{ fill: P.departure, fillOpacity: 0.05 }}
       />
 
-      {/* zone */}
-      <polygon
-        points={pts(g.corners)}
-        style={{
-          fill: P.zoneFill,
-          stroke: P.friendly,
-          strokeWidth: u * 0.4,
-          strokeDasharray: `${u * 1.6} ${u * 1}`,
-        }}
-      />
+      {/* zone (tap anywhere on it to select the HLZ) */}
+      <g {...itemAttr('zone')}>
+        <polygon
+          points={pts(g.corners)}
+          style={{
+            fill: P.zoneFill,
+            stroke: P.friendly,
+            strokeWidth: u * 0.4 * P.lw,
+            strokeDasharray: `${u * 1.6} ${u * 1}`,
+          }}
+        />
 
-      {/* landing points */}
-      {g.lps.map((p, i) => (
-        <g key={i}>
-          <circle
-            cx={p.x}
-            cy={-p.y}
-            r={g.D / 2}
-            style={{ fill: P.paper, fillOpacity: 0.55, stroke: P.friendly, strokeWidth: u * 0.35 }}
-          />
-          <circle cx={p.x} cy={-p.y} r={u * 0.7} style={{ fill: P.friendly }} />
-          <Txt
-            at={{ x: p.x, y: p.y - Math.min(g.D / 2 - u * 2.2, u * 4) }}
-            size={u * 2.2}
-            P={P}
-            color={P.friendly}
-          >
-            {`LP${i + 1}`}
-          </Txt>
-        </g>
-      ))}
+        {/* landing points */}
+        {g.lps.map((p, i) => (
+          <g key={i}>
+            <circle
+              cx={p.x}
+              cy={-p.y}
+              r={g.D / 2}
+              style={{
+                fill: P.paper,
+                fillOpacity: 0.55,
+                stroke: P.friendly,
+                strokeWidth: u * 0.35 * P.lw,
+              }}
+            />
+            <circle cx={p.x} cy={-p.y} r={u * 0.7} style={{ fill: P.friendly }} />
+            <Txt
+              at={{ x: p.x, y: p.y - Math.min(g.D / 2 - u * 2.2, u * 4) }}
+              size={u * 2.2}
+              P={P}
+              color={P.friendly}
+            >
+              {`LP${i + 1}`}
+            </Txt>
+          </g>
+        ))}
+      </g>
 
       {/* lead-LP markings */}
       {day.includes('Air panel (VS-17)') && (
@@ -174,7 +192,7 @@ export const HlzLayer = ({
           y={-lead.y - u * 0.7}
           width={u * 2.4}
           height={u * 1.4}
-          style={{ fill: P.danger, stroke: P.ink, strokeWidth: u * 0.15 }}
+          style={{ fill: P.danger, stroke: P.ink, strokeWidth: u * 0.15 * P.lw }}
         />
       )}
       {night.includes('Inverted Y (IR)') && (
@@ -198,8 +216,8 @@ export const HlzLayer = ({
         from={g.approachFrom}
         to={g.approachTo}
         color={P.friendly}
-        width={u * 0.55}
-        head={u * 2.6}
+        width={u * 0.55 * P.lw}
+        head={u * 2.6 * P.head}
         dash={`${u * 2} ${u * 1.2}`}
       />
       <Txt at={labels.approach.at} size={labels.size} P={P} color={P.friendly}>
@@ -209,13 +227,33 @@ export const HlzLayer = ({
         from={g.departureFrom}
         to={g.departureTo}
         color={P.departure}
-        width={u * 0.55}
-        head={u * 2.6}
+        width={u * 0.55 * P.lw}
+        head={u * 2.6 * P.head}
         dash={`${u * 2} ${u * 1.2}`}
       />
       <Txt at={labels.departure.at} size={labels.size} P={P} color={P.departure}>
         {labels.departure.text}
       </Txt>
+
+      {/* heading handles: drag the approach tail / departure head to turn the heading */}
+      {interactive &&
+        (
+          [
+            ['appr', g.approachFrom, P.friendly],
+            ['dep', g.departureTo, P.departure],
+          ] as const
+        ).map(([id, at, color]) => (
+          <g key={id} {...itemAttr(id)} className="sketch-handle">
+            <circle cx={at.x} cy={-at.y} r={u * 3.6} style={{ fill: 'transparent' }} />
+            <circle
+              cx={at.x}
+              cy={-at.y}
+              r={u * 1.5}
+              style={{ fill: P.paper, stroke: color, strokeWidth: u * 0.45 }}
+            />
+            <circle cx={at.x} cy={-at.y} r={u * 0.5} style={{ fill: color }} />
+          </g>
+        ))}
 
       {/* zone name */}
       <Txt at={{ x: 0, y: topY + u * 3 }} size={u * 2.6} P={P} weight={800}>
@@ -229,14 +267,19 @@ export const HlzLayer = ({
             cx={windAnchor.x}
             cy={-windAnchor.y}
             r={u * 6.4}
-            style={{ fill: P.paper, fillOpacity: 0.85, stroke: P.grid, strokeWidth: u * 0.15 }}
+            style={{
+              fill: P.paper,
+              fillOpacity: 0.85,
+              stroke: P.grid,
+              strokeWidth: u * 0.15 * P.lw,
+            }}
           />
           <Arrow
             from={sub(windAnchor, mul(downwind, windHalf))}
             to={add(windAnchor, mul(downwind, windHalf))}
             color={P.wind}
-            width={u * 0.6}
-            head={u * 2}
+            width={u * 0.6 * P.lw}
+            head={u * 2 * P.head}
           />
           <Txt
             at={{ x: windAnchor.x, y: windAnchor.y - u * 8.4 }}
@@ -255,17 +298,17 @@ export const HlzLayer = ({
         const bad = c?.ok === false;
         const color = bad ? P.danger : P.obstacle;
         return (
-          <g key={o.id} {...dragAttr(`obs:${o.id}`)} className="sketch-drag">
+          <g key={o.id} {...itemAttr(`obs:${o.id}`)} className="sketch-drag">
             <circle cx={o.pos.x} cy={-o.pos.y} r={u * 3.4} style={{ fill: 'transparent' }} />
             {bad && (
               <circle
                 cx={o.pos.x}
                 cy={-o.pos.y}
                 r={u * 3.2}
-                style={{ fill: 'none', stroke: P.danger, strokeWidth: u * 0.4 }}
+                style={{ fill: 'none', stroke: P.danger, strokeWidth: u * 0.4 * P.lw }}
               />
             )}
-            <ObstacleGlyph o={o} u={u} color={color} />
+            <ObstacleGlyph o={o} u={u} color={color} lw={P.lw} />
             <Txt at={{ x: o.pos.x, y: o.pos.y - u * 4.2 }} size={u * 1.8} P={P} color={color}>
               {`${o.kind.toUpperCase()} ${o.heightM}m${c?.ok === false ? ' ✗10:1' : c?.ok ? ' ✓' : ''}`}
             </Txt>
@@ -275,13 +318,16 @@ export const HlzLayer = ({
 
       {/* security */}
       {hlz.security.map((m) => (
-        <g key={m.id} {...dragAttr(`sec:${m.id}`)} className="sketch-drag">
+        <g key={m.id} {...itemAttr(`sec:${m.id}`)} className="sketch-drag">
+          {interactive && (
+            <circle cx={m.pos.x} cy={-m.pos.y} r={u * 4.2} style={{ fill: 'transparent' }} />
+          )}
           <rect
             x={m.pos.x - u * 2.2}
             y={-m.pos.y - u * 1.4}
             width={u * 4.4}
             height={u * 2.8}
-            style={{ fill: P.paper, stroke: P.friendly, strokeWidth: u * 0.35 }}
+            style={{ fill: P.paper, stroke: P.friendly, strokeWidth: u * 0.35 * P.lw }}
           />
           <Txt at={m.pos} size={u * 1.5} P={P} color={P.friendly} halo={false}>
             {m.label || 'SEC'}
@@ -297,7 +343,7 @@ export const HlzLayer = ({
         y2={-hlz.loadPoint.y}
         style={{
           stroke: P.danger,
-          strokeWidth: u * 0.4,
+          strokeWidth: u * 0.4 * P.lw,
           strokeDasharray: `${u * 0.5} ${u * 0.9}`,
           strokeLinecap: 'round',
         }}
@@ -307,12 +353,20 @@ export const HlzLayer = ({
       </Txt>
 
       {/* casualty loading point */}
-      <g {...dragAttr('load')} className="sketch-drag">
+      <g {...itemAttr('load')} className="sketch-drag">
+        {interactive && (
+          <circle
+            cx={hlz.loadPoint.x}
+            cy={-hlz.loadPoint.y}
+            r={u * 4.2}
+            style={{ fill: 'transparent' }}
+          />
+        )}
         <circle
           cx={hlz.loadPoint.x}
           cy={-hlz.loadPoint.y}
           r={u * 2.4}
-          style={{ fill: P.paper, stroke: P.danger, strokeWidth: u * 0.35 }}
+          style={{ fill: P.paper, stroke: P.danger, strokeWidth: u * 0.35 * P.lw }}
         />
         <path
           d={`M${hlz.loadPoint.x - u * 0.45},${-hlz.loadPoint.y - u * 1.5}h${u * 0.9}v${u * 1.05}h${u * 1.05}v${u * 0.9}h${-u * 1.05}v${u * 1.05}h${-u * 0.9}v${-u * 1.05}h${-u * 1.05}v${-u * 0.9}h${u * 1.05}z`}
@@ -329,13 +383,13 @@ export const HlzLayer = ({
       </g>
 
       {/* CCP */}
-      <g {...(g.ccpFromGrid ? {} : dragAttr('ccp'))} className={g.ccpFromGrid ? '' : 'sketch-drag'}>
+      <g {...(g.ccpFromGrid ? {} : itemAttr('ccp'))} className={g.ccpFromGrid ? '' : 'sketch-drag'}>
         <rect
           x={g.ccpPos.x - u * 3.6}
           y={-g.ccpPos.y - u * 2}
           width={u * 7.2}
           height={u * 4}
-          style={{ fill: P.paper, stroke: P.danger, strokeWidth: u * 0.45 }}
+          style={{ fill: P.paper, stroke: P.danger, strokeWidth: u * 0.45 * P.lw }}
         />
         <Txt at={g.ccpPos} size={u * 2} P={P} color={P.danger} halo={false}>
           CCP

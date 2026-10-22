@@ -6,8 +6,7 @@ import monoBoldUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-7
 import monoHeavyUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-800-normal.woff2?url';
 import sansUrl from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?url';
 import sansBoldUrl from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2?url';
-import { fileSlug } from '../lib/dtg';
-import { pdfSafe } from '../lib/pdfText';
+import { fileSlug, pdfSafe } from './host';
 import { ccpDecor, computeCcp } from './ccp';
 import { CcpLayer } from './CcpLayer';
 import { northReferenceForGrid, parseMgrs } from './geo';
@@ -47,7 +46,7 @@ function sheetElement(plan: CasevacPlan, sheet: SheetId, bg: Backgrounds): React
           background={bg.hlz}
           ariaLabel="HLZ sketch"
         >
-          <HlzLayer hlz={plan.hlz} g={g} view={view} P={P} editable={false} windAt={decor.wind} />
+          <HlzLayer hlz={plan.hlz} g={g} view={view} P={P} windAt={decor.wind} />
         </SketchCanvas>
         <DataColumn lines={hlzLines(plan, g, hlzNorth)} x={900} y={132} w={660} maxY={H - 60} />
       </Frame>
@@ -80,7 +79,7 @@ function sheetElement(plan: CasevacPlan, sheet: SheetId, bg: Backgrounds): React
             g={cg}
             view={cg.view}
             P={P}
-            editable={false}
+
             hlzName={plan.hlz.name}
           />
         </SketchCanvas>
@@ -115,7 +114,7 @@ function sheetElement(plan: CasevacPlan, sheet: SheetId, bg: Backgrounds): React
           showNorth={false}
           ariaLabel="Evacuation route on map"
         >
-          <RouteMapLayer route={plan.route} view={view} P={P} editable={false} />
+          <RouteMapLayer route={plan.route} view={view} P={P} />
         </SketchCanvas>
         <DataColumn lines={lines} x={900} y={132} w={660} maxY={H - 60} />
       </Frame>

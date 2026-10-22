@@ -32,14 +32,24 @@ const FLOWS: [CcpAreaKind, CcpAreaKind, boolean][] = [
   ['evac', 'loading', false],
 ];
 
-const Area = ({ a, P, u, editable }: { a: CcpArea; P: Palette; u: number; editable: boolean }) => {
+const Area = ({
+  a,
+  P,
+  u,
+  interactive,
+}: {
+  a: CcpArea;
+  P: Palette;
+  u: number;
+  interactive: boolean;
+}) => {
   const meta = CCP_AREA_META[a.kind];
   const color = toneColor(P, a.kind);
   const fs = Math.min(u * 2.1, (a.w / Math.max(6, meta.label.length)) * 1.45);
   const lanes = a.kind === 'evac' ? ['URG / URG-S', 'PRIORITY', 'ROUTINE'] : null;
   const horizontal = a.w >= a.h;
   return (
-    <g {...(editable ? { 'data-drag': `area:${a.kind}` } : {})} className="sketch-drag">
+    <g {...(interactive ? { 'data-item': `area:${a.kind}` } : {})} className="sketch-drag">
       <rect
         x={a.pos.x - a.w / 2}
         y={-a.pos.y - a.h / 2}
@@ -50,7 +60,7 @@ const Area = ({ a, P, u, editable }: { a: CcpArea; P: Palette; u: number; editab
           fill: color,
           fillOpacity: a.kind === 'expectant' ? 0.22 : 0.14,
           stroke: color,
-          strokeWidth: u * 0.4,
+          strokeWidth: u * 0.4 * P.lw,
           strokeDasharray:
             a.kind === 'remains' || a.kind === 'enemy' ? `${u * 1.2} ${u * 0.8}` : undefined,
         }}
@@ -73,7 +83,7 @@ const Area = ({ a, P, u, editable }: { a: CcpArea; P: Palette; u: number; editab
                     y2={-a.pos.y + a.h / 2}
                     style={{
                       stroke: color,
-                      strokeWidth: u * 0.2,
+                      strokeWidth: u * 0.2 * P.lw,
                       strokeDasharray: `${u * 0.6} ${u * 0.5}`,
                     }}
                   />
@@ -85,7 +95,7 @@ const Area = ({ a, P, u, editable }: { a: CcpArea; P: Palette; u: number; editab
                     x2={a.pos.x + a.w / 2}
                     style={{
                       stroke: color,
-                      strokeWidth: u * 0.2,
+                      strokeWidth: u * 0.2 * P.lw,
                       strokeDasharray: `${u * 0.6} ${u * 0.5}`,
                     }}
                   />
@@ -145,14 +155,15 @@ export const CcpLayer = ({
   g,
   view,
   P,
-  editable,
+  interactive = false,
   hlzName,
 }: {
   ccp: CcpSheet;
   g: CcpGeom;
   view: ViewBox;
   P: Palette;
-  editable: boolean;
+  /** Workspace mode: tag items for selection. */
+  interactive?: boolean;
   hlzName: string;
 }) => {
   const u = view.w / 100;
@@ -172,8 +183,8 @@ export const CcpLayer = ({
             from={from}
             to={to}
             color={P.inkSoft}
-            width={u * (dashed ? 0.25 : 0.35)}
-            head={u * 1.6}
+            width={u * (dashed ? 0.25 : 0.35) * P.lw}
+            head={u * 1.6 * P.head}
             dash={dashed ? `${u * 0.8} ${u * 0.7}` : undefined}
           />
         );
@@ -182,7 +193,7 @@ export const CcpLayer = ({
       {ccp.areas
         .filter((a) => a.enabled)
         .map((a) => (
-          <Area key={a.kind} a={a} P={P} u={u} editable={editable} />
+          <Area key={a.kind} a={a} P={P} u={u} interactive={interactive} />
         ))}
 
       {triage && (
@@ -191,8 +202,8 @@ export const CcpLayer = ({
             from={g.poiFrom}
             to={rectEdge(triage.pos, triage.w, triage.h, g.poiFrom)}
             color={P.danger}
-            width={u * 0.5}
-            head={u * 2}
+            width={u * 0.5 * P.lw}
+            head={u * 2 * P.head}
           />
           <Txt at={labels.poi.at} size={labels.size} P={P} color={P.danger}>
             {labels.poi.text}
@@ -204,8 +215,8 @@ export const CcpLayer = ({
         from={g.exitFrom}
         to={g.exitTo}
         color={P.friendly}
-        width={u * 0.5}
-        head={u * 2}
+        width={u * 0.5 * P.lw}
+        head={u * 2 * P.head}
         dash={`${u * 1.2} ${u * 0.8}`}
       />
       <Txt at={labels.exit.at} size={labels.size} P={P} color={P.friendly}>
@@ -213,13 +224,20 @@ export const CcpLayer = ({
       </Txt>
 
       {ccp.security.map((m) => (
-        <g key={m.id} {...(editable ? { 'data-drag': `sec:${m.id}` } : {})} className="sketch-drag">
+        <g
+          key={m.id}
+          {...(interactive ? { 'data-item': `sec:${m.id}` } : {})}
+          className="sketch-drag"
+        >
+          {interactive && (
+            <circle cx={m.pos.x} cy={-m.pos.y} r={u * 4.2} style={{ fill: 'transparent' }} />
+          )}
           <rect
             x={m.pos.x - u * 2.2}
             y={-m.pos.y - u * 1.4}
             width={u * 4.4}
             height={u * 2.8}
-            style={{ fill: P.paper, stroke: P.friendly, strokeWidth: u * 0.35 }}
+            style={{ fill: P.paper, stroke: P.friendly, strokeWidth: u * 0.35 * P.lw }}
           />
           <Txt at={m.pos} size={u * 1.5} P={P} color={P.friendly} halo={false}>
             {m.label || 'SEC'}

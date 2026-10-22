@@ -1,14 +1,18 @@
 import { ArrowDown, ArrowUp, ClipboardCopy, Plus, Trash2 } from 'lucide-react';
-import { Block, Callout, Info } from '../components/ui';
 import {
+  appendNote,
+  Block,
+  Callout,
   CheckGroup,
+  copyText,
   FieldRow,
+  Info,
+  notify,
   NumberField,
   Segmented,
   SelectField,
   TextField,
-} from '../components/form';
-import { appendNote, copyText, notify } from '../lib/storage';
+} from './host';
 import { eastWest, mul, pad3, parseMgrs, type NorthReference } from './geo';
 import type { HlzGeom } from './hlz';
 import {
