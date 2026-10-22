@@ -4,6 +4,7 @@ import { FileDown, FileUp, Link2, PencilRuler, Save } from 'lucide-react';
 import {
   Callout,
   notify,
+  removeItem,
   safeSetItem,
   Segmented,
   StatusIcon,
@@ -122,20 +123,12 @@ export default function CasevacTab() {
   // ----- background images -----
   const persistBg = (s: SheetId, value: Background | null) => {
     if (!value) {
-      try {
-        localStorage.removeItem(bgKey(s));
-      } catch {
-        /* storage unavailable */
-      }
+      removeItem(bgKey(s));
       return;
     }
     if (!safeSetItem(bgKey(s), JSON.stringify(value))) {
       // Don't leave the previous image in storage to reappear on the next load.
-      try {
-        localStorage.removeItem(bgKey(s));
-      } catch {
-        /* storage unavailable */
-      }
+      removeItem(bgKey(s));
       notify('Image kept for this session only — too large to save', 'error');
     }
   };

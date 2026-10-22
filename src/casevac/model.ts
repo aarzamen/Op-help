@@ -2,7 +2,7 @@ import { newItemId, readJson, safeSetItem } from './host';
 import type { Vec } from './geo';
 
 /**
- * CASEVAC plan model. One plan per browser (key `casevac-plan`); background images are
+ * CASEVAC plan model. One plan per selected operation (logical key `casevac-plan`); background images are
  * stored separately per sheet (`casevac-bg-<sheet>`) so a big screenshot can't block saving
  * the plan itself. All positions are world meters (x = grid east, y = grid north) relative
  * to the sheet's reference grid.
@@ -508,13 +508,14 @@ const isVec = (v: unknown): v is Vec =>
 /** ±100 km from the sheet's reference grid covers any CASEVAC chain; beyond it the
  * gridline loops and fit math get absurd (a node at 1e12 m hangs the tab). */
 const COORD_MAX = 100_000;
-const TEXT_MAX = 4000;
 const LIST_MAX = 100;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const num = (v: unknown, d: number, lo = -Infinity, hi = Infinity) =>
   typeof v === 'number' && Number.isFinite(v) ? clamp(v, lo, hi) : d;
-const text = (v: unknown, d = '') => (typeof v === 'string' ? v.slice(0, TEXT_MAX) : d);
+// Links/files have byte limits and local storage has a browser quota. Do not silently
+// truncate legitimate form text when a saved plan is reopened or backed up.
+const text = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const vec = (v: unknown, d: Vec): Vec =>
   isVec(v) ? { x: clamp(v.x, -COORD_MAX, COORD_MAX), y: clamp(v.y, -COORD_MAX, COORD_MAX) } : d;
 const oneOf = <T>(v: unknown, allowed: readonly T[], d: T): T =>

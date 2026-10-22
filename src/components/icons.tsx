@@ -30,6 +30,14 @@ const dot = (cx: number, cy: number, r = 1.2) => (
 
 // ----- method / reference -----
 
+/** Named plans: a folder holding the order. */
+export const IconPlans = ({ size }: P) => (
+  <Svg size={size}>
+    <path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+    <path d="M7 11h10M7 15h7" />
+  </Svg>
+);
+
 /** Grading sheet: clipboard with a check. */
 export const IconRubric = ({ size }: P) => (
   <Svg size={size}>
