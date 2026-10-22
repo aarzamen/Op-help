@@ -13,7 +13,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Info>
 
     <Block
-      theme="red"
+      theme="mission"
       letter="M"
       name="MISSION"
       desc="Your tasking statement: task, purpose, priority"
@@ -23,7 +23,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         the <em>task</em> (what you do) and the <em>purpose</em> (why — your task either{' '}
         <em>causes</em> something or <em>enables</em> someone else).
       </Info>
-      <SubBlock theme="red" letter="TK" name="TASKS — SPECIFIED, IMPLIED, ESSENTIAL">
+      <SubBlock theme="mission" letter="TK" name="TASKS — SPECIFIED, IMPLIED, ESSENTIAL">
         <LeafItem
           letter="S"
           text={
@@ -60,7 +60,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           HOW TO FIND IMPLIED TASKS → GUIDE
         </button>
       </SubBlock>
-      <SubBlock theme="red" letter="PR" name="PRIORITY — MHP / THP">
+      <SubBlock theme="mission" letter="PR" name="PRIORITY — MHP / THP">
         <LeafItem
           letter="M"
           text={
@@ -80,14 +80,14 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         />
         <Info>Priority flows downward — every tasking statement you write carries its own.</Info>
       </SubBlock>
-      <SubBlock theme="red" letter="BP" name="BACKWARDS PLANNING">
+      <SubBlock theme="execution" letter="BP" name="BACKWARDS PLANNING">
         <Info>
           Start from actions on the objective and work back to where you stand now — what has to
           happen right before that, and before that. It exposes logistics and timing gaps. Show
           restraint: “You don't need to brief that troops tie their boots.”
         </Info>
       </SubBlock>
-      <SubBlock theme="red" letter="EP" name="ENGINEERING PRIORITIES">
+      <SubBlock theme="execution" letter="EP" name="ENGINEERING PRIORITIES">
         <Info>
           For construction missions, set engineering priorities from the commander's intent, enemy,
           engineer capability, mission type, logistics, time and materials. Higher maintains a{' '}
@@ -97,12 +97,12 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
       <InlineNotes id="mettt-m" label="Mission" />
     </Block>
 
-    <Block theme="blue" letter="E" name="ENEMY" desc="SALUTE → DRAW-D → EMLCOA">
+    <Block theme="situation" letter="E" name="ENEMY" desc="SALUTE → DRAW-D → EMLCOA">
       <Callout kind="tip">
         “Your enemy, not higher's.” Zoom in: the threat in your AO may be small arms and sUAS, not
         the missiles in higher's paragraph.
       </Callout>
-      <SubBlock theme="blue" letter="S" name="SALUTE — COMPOSITION, DISPOSITION, STRENGTH">
+      <SubBlock theme="situation" letter="S" name="SALUTE — COMPOSITION, DISPOSITION, STRENGTH">
         <LeafItem
           letter="S"
           text={
@@ -156,7 +156,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           Bulletize SALUTE down the page for the brief; paragraphs are fine for your own planning.
         </Info>
       </SubBlock>
-      <SubBlock theme="blue" letter="D" name="DRAW-D — CAPABILITIES">
+      <SubBlock theme="situation" letter="D" name="DRAW-D — CAPABILITIES">
         <div className="info-text info-warn">
           Rate each most likely / likely / unlikely — only ONE can be most likely.
         </div>
@@ -202,7 +202,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           }
         />
       </SubBlock>
-      <SubBlock theme="blue" letter="EM" name="EMLCOA">
+      <SubBlock theme="situation" letter="EM" name="EMLCOA">
         <Info>
           One paragraph that marries SALUTE and DRAW-D into your professional estimate of what the
           enemy will do when you execute.
@@ -218,12 +218,12 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="green"
+      theme="orient"
       letter="T"
       name="TERRAIN & WEATHER"
       desc="KOCOA + weather — always with the “so what”"
     >
-      <SubBlock theme="green" letter="KO" name="KOCOA — TERRAIN">
+      <SubBlock theme="orient" letter="KO" name="KOCOA — TERRAIN">
         <LeafItem
           letter="K"
           text={
@@ -271,7 +271,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         />
         <InlineNotes id="mettt-t-kocoa" label="KOCOA" />
       </SubBlock>
-      <SubBlock theme="green" letter="WX" name="WEATHER">
+      <SubBlock theme="orient" letter="WX" name="WEATHER">
         <LeafItem
           letter="V"
           text={
@@ -332,12 +332,12 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="amber"
+      theme="situation"
       letter="T"
       name="TROOPS & FIRE SUPPORT"
       desc="Task organization, assets, human factors, fires"
     >
-      <SubBlock theme="amber" letter="TR" name="TROOPS">
+      <SubBlock theme="situation" letter="TR" name="TROOPS">
         <LeafItem
           letter="1"
           text={
@@ -367,7 +367,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         />
         <InlineNotes id="mettt-tr" label="Troops" />
       </SubBlock>
-      <SubBlock theme="amber" letter="FS" name="FIRE SUPPORT">
+      <SubBlock theme="execution" letter="FS" name="FIRE SUPPORT">
         <LeafItem
           letter="GS"
           text={
@@ -403,7 +403,7 @@ const AnalyzeView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="purple"
+      theme="execution"
       letter="T"
       name="TIME AVAILABLE"
       desc="Backwards plan from actions on the objective"

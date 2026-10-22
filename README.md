@@ -17,13 +17,18 @@ as a Google AI Studio app, the AI/Gemini scaffolding has been removed.
 | **GUIDE** | Learn the method on one page: the 5-step flow, the graded checklist as a rehearsal tracker (assign sections to briefers, tick items off, see points covered), taking apart higher's order (specified / implied / essential tasks), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, and a searchable glossary. |
 | **ANALYZE** | Work METT-T on higher's order, with the course's rules and labeled examples. |
 | **ORDER** | Write your order: Orientation, ¶1–¶5 and the time hack. Every block lists what the grading sheet checks (with points); TEMPLATE drops the expected outline into the notes; a builder writes tasking statements in the course format. |
-| **CASEVAC** | Plan casualty evacuation: an HLZ overhead sketch (LP sizes, approach/departure corridors, the 10:1 obstacle check, wind), a CCP layout (one-way flow, triage areas), the evacuation route with T+ times and the 1-hour POI→surgical check, a prepared 9-line with MIST, and the graded ¶4.a paragraph (one tap inserts it into the order). Drag markers, overlay a map screenshot or a photo of the terrain model, export PNGs or a packet PDF. |
+| **CASEVAC** | Plan casualty evacuation: an HLZ overhead sketch (LP sizes, approach/departure corridors, the 10:1 obstacle check, wind), a CCP layout (one-way flow, triage areas), the evacuation route with T+ times and the 1-hour POI→surgical check, a prepared 9-line with MIST, and the graded ¶4.a paragraph (one tap inserts it into the order). **EDIT SKETCH** opens a full-screen workspace that holds still while you work: tap a marker for its options, drag it, pinch to zoom, tap empty ground to add one, undo/redo; type an exact grid on a bigger screen. Overlay a map screenshot or a photo of the terrain model. **SEND LINK / SAVE FILE** moves the plan to another device (start on a phone, finish on an iPad or computer). Export PNGs or a packet PDF. |
 | **TOOLS** | PCC/PCI checklists (editable), order types, tactical control measures, and a NATO/APP-6 map-symbols appendix. |
 
 Also: a live **compass** with grid (**G**) and magnetic (**M**) arrows using the real G-M
 angle for your location (WMM declination − UTM grid convergence), **GET GRID** (GPS →
 MGRS into your notes), **dictation** into any note, **blackout mode** (red-on-black,
 including the sketches), and **copy / PDF export** of every tab.
+
+Colors mean something: every tile takes the color of the part of the order it feeds
+(orientation brown, situation navy, mission red, execution green, admin & logistics —
+including all of CASEVAC — amber, command & signal purple, reference slate). See
+`docs/DESIGN-SYSTEM.md`.
 
 ## Tech stack
 
@@ -54,11 +59,15 @@ CI (`.github/workflows/ci.yml`) runs typecheck + lint + build on every PR.
 - `src/content/` — doctrinal content as data (grading rubric, note templates, task verbs,
   glossary); `src/lib/` — storage, export helpers, time formatting.
 - `src/casevac/` — the CASEVAC planner: geometry (`geo`, `hlz`, `ccp`, `route`), SVG
-  layers, forms, and the PNG/PDF sheet exporter.
+  layers, forms, the full-screen sketch workspace (`workspace/`), device handoff
+  (`handoff.ts`) and the PNG/PDF sheet exporter. It reaches the rest of the app only
+  through `casevac/host.ts`, so it can be split out later.
 - `src/export/exporters.ts` — copy-as-text and PDF for every tab.
 - `CLAUDE.md` — contributor guide, conventions, storage keys, and the prioritized to-dos.
 - `docs/SPEC-framework-hardening.md` — Milestones B–E (implementable specs).
 - `docs/SPEC-dictation-apple-asr.md` — provider-agnostic dictation + optional Apple ASR.
+- `docs/SPEC-casevac-workspace.md` — the sketch workspace, handoff and print weights.
+- `docs/DESIGN-SYSTEM.md` — what each color means and the icon rules.
 
 > ⚠️ **OPSEC:** operational content is stored **unencrypted** in the browser. Review the
 > handling notes in `CLAUDE.md` before any real-world use. The CASEVAC sheets are

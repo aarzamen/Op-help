@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileDown, FileUp, Link2, PencilRuler, Save } from 'lucide-react';
-import { Callout, notify, safeSetItem, Segmented, useLocalStorage, useMediaQuery } from './host';
+import {
+  Callout,
+  notify,
+  safeSetItem,
+  Segmented,
+  StatusIcon,
+  type Status,
+  useLocalStorage,
+  useMediaQuery,
+} from './host';
 import { ccpDecor, computeCcp } from './ccp';
 import { CcpLayer } from './CcpLayer';
 import { downloadCasevacPdf, downloadSheetPng } from './exportSheet';
@@ -89,6 +98,7 @@ export default function CasevacTab() {
   );
   const timeline = useMemo(() => routeTimeline(plan.route), [plan.route]);
   const findings = useMemo(() => hlzFindings(plan.hlz, hlzGeom), [plan.hlz, hlzGeom]);
+  const routeLevel: Status = timeline.urgentOk === null ? 'warn' : timeline.urgentOk ? 'ok' : 'bad';
 
   const viewFor = (s: SheetId): ViewBox =>
     s === 'hlz'
@@ -339,19 +349,21 @@ export default function CasevacTab() {
               <ul className="findings" aria-label="HLZ checks">
                 {findings.map((f) => (
                   <li key={f.text} className={`finding finding-${f.level}`}>
-                    {f.text}
+                    <StatusIcon level={f.level} />
+                    <span>{f.text}</span>
                   </li>
                 ))}
               </ul>
             )}
             {sheet === 'route' && (
               <ul className="findings" aria-label="Route checks">
-                <li
-                  className={`finding finding-${timeline.urgentOk === null ? 'warn' : timeline.urgentOk ? 'ok' : 'bad'}`}
-                >
-                  {timeline.toSurgicalMin === null
-                    ? 'Add a Role 2 or Role 3 node to check the 1-hour standard'
-                    : `POI → surgical care ${fmtMin(timeline.toSurgicalMin)} — ${timeline.urgentOk ? 'meets' : 'misses'} the 1-hour Urgent / Urgent-Surgical standard`}
+                <li className={`finding finding-${routeLevel}`}>
+                  <StatusIcon level={routeLevel} />
+                  <span>
+                    {timeline.toSurgicalMin === null
+                      ? 'Add a Role 2 or Role 3 node to check the 1-hour standard'
+                      : `POI → surgical care ${fmtMin(timeline.toSurgicalMin)} — ${timeline.urgentOk ? 'meets' : 'misses'} the 1-hour Urgent / Urgent-Surgical standard`}
+                  </span>
                 </li>
               </ul>
             )}

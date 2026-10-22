@@ -1,4 +1,5 @@
 import { Ambulance } from 'lucide-react';
+import { IconHeader, IconStopwatch } from '../components/icons';
 import { Block, Callout, Info, LeafItem, SectionLabel, SubBlock } from '../components/ui';
 import { InlineNotes, NotesBlock } from '../components/notes';
 import { FieldRow, TextField } from '../components/form';
@@ -24,8 +25,8 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
       </Info>
 
       <Block
-        theme="slate"
-        letter="#"
+        theme="ref"
+        letter={<IconHeader />}
         name="ORDER HEADER"
         desc="Unit, operation, banner — printed on the PDF"
       >
@@ -54,7 +55,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== ORIENTATION ===== */}
       <Block
-        theme="blue"
+        theme="orient"
         letter="O"
         kicker="BRIEFED FIRST · 12 PTS"
         name="ORIENTATION"
@@ -117,19 +118,19 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== 1. SITUATION ===== */}
       <Block
-        theme="blue"
+        theme="situation"
         letter="1"
         kicker="¶1 · 17 PTS"
         name="SITUATION"
         desc="Task org, enemy, friendly, attachments"
       >
-        <SubBlock theme="blue" letter="TO" name="TASK ORGANIZATION & BATTLESPACE · 2 PTS">
+        <SubBlock theme="situation" letter="TO" name="TASK ORGANIZATION & BATTLESPACE · 2 PTS">
           <Info>
             Who belongs to whom (it heads the written order), then the tactical picture around you.
           </Info>
           <InlineNotes id="osmeac-s-to" label="Task Organization" />
         </SubBlock>
-        <SubBlock theme="blue" letter="EN" name="ENEMY — SALUTE → DRAW-D → EMLCOA · 8 PTS">
+        <SubBlock theme="situation" letter="EN" name="ENEMY — SALUTE → DRAW-D → EMLCOA · 8 PTS">
           <LeafItem
             letter="S"
             text={
@@ -167,7 +168,11 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           <div className="connector">SAME ANALYSIS AS ANALYZE → ENEMY</div>
           <InlineNotes id="osmeac-s-en" label="Enemy Forces" />
         </SubBlock>
-        <SubBlock theme="blue" letter="FR" name="FRIENDLY — HIGHER, ADJACENT, SUPPORTING · 5 PTS">
+        <SubBlock
+          theme="situation"
+          letter="FR"
+          name="FRIENDLY — HIGHER, ADJACENT, SUPPORTING · 5 PTS"
+        >
           <LeafItem
             letter="H"
             text={
@@ -199,7 +204,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           </Callout>
           <InlineNotes id="osmeac-s-fr" label="Friendly Forces" />
         </SubBlock>
-        <SubBlock theme="blue" letter="A/D" name="ATTACHMENTS & DETACHMENTS · 2 PTS">
+        <SubBlock theme="situation" letter="A/D" name="ATTACHMENTS & DETACHMENTS · 2 PTS">
           <Info>
             Attachments belong to you for tasking; detachments no longer belong to you. Say who, and
             the effective date-time.
@@ -210,7 +215,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== 2. MISSION ===== */}
       <Block
-        theme="red"
+        theme="mission"
         letter="2"
         kicker="¶2 · 5 PTS"
         name="MISSION"
@@ -238,13 +243,13 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== 3. EXECUTION ===== */}
       <Block
-        theme="green"
+        theme="execution"
         letter="3"
         kicker="¶3 · 26 PTS"
         name="EXECUTION"
         desc="Intent, concept by part, tasks, fires, coordinating instructions"
       >
-        <SubBlock theme="green" letter="CI" name="COMMANDER'S INTENT · 6 PTS">
+        <SubBlock theme="execution" letter="CI" name="COMMANDER'S INTENT · 6 PTS">
           <LeafItem
             letter="P"
             text={
@@ -303,7 +308,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           <InlineNotes id="osmeac-e-ci" label="Commander's Intent" />
         </SubBlock>
 
-        <SubBlock theme="green" letter="CO" name="CONCEPT OF OPERATIONS — PARTS · 6 PTS">
+        <SubBlock theme="execution" letter="CO" name="CONCEPT OF OPERATIONS — PARTS · 6 PTS">
           <Info>
             Break the operation into parts (the instructors' term; the sheet accepts
             phase/stage/part). For every part:
@@ -363,7 +368,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           <InlineNotes id="osmeac-e-co" label="Concept of Operations" />
         </SubBlock>
 
-        <SubBlock theme="green" letter="TK" name="TASKS — TASKING STATEMENTS · 8 PTS">
+        <SubBlock theme="execution" letter="TK" name="TASKS — TASKING STATEMENTS · 8 PTS">
           <Info>
             “The most critical component of the OPORD.” One tasking statement per element, per part:
             three parts × three elements = nine statements. Each has the 5 W's with a task and a
@@ -383,7 +388,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           <InlineNotes id="osmeac-e-tk" label="Tasks" />
         </SubBlock>
 
-        <SubBlock theme="green" letter="FS" name="FIRE SUPPORT PLAN">
+        <SubBlock theme="execution" letter="FS" name="FIRE SUPPORT PLAN">
           <Info>
             Task, purpose, method, effect; priority of fires and target precedence. Fire support
             gets tasked every part — four parts, four times.
@@ -391,7 +396,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
           <InlineNotes id="osmeac-e-fs" label="Fire Support" />
         </SubBlock>
 
-        <SubBlock theme="green" letter="CO-I" name="COORDINATING INSTRUCTIONS · 6 PTS">
+        <SubBlock theme="execution" letter="CO-I" name="COORDINATING INSTRUCTIONS · 6 PTS">
           <LeafItem
             letter="1"
             text={
@@ -452,7 +457,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== 4. ADMIN & LOGISTICS ===== */}
       <Block
-        theme="amber"
+        theme="admin"
         letter="4"
         kicker="¶4 · 16 PTS · USUALLY THE ENLISTED BRIEFER"
         name="ADMIN & LOGISTICS"
@@ -537,7 +542,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
 
       {/* ===== 5. COMMAND & SIGNAL ===== */}
       <Block
-        theme="purple"
+        theme="command"
         letter="5"
         kicker="¶5 · 7 PTS"
         name="COMMAND & SIGNAL"
@@ -569,7 +574,7 @@ const OrderView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => {
         <InlineNotes id="osmeac-c" label="Command & Signal" />
       </Block>
 
-      <Block theme="slate" letter="⏱" name="TIME HACK" desc="How every brief ends">
+      <Block theme="ref" letter={<IconStopwatch />} name="TIME HACK" desc="How every brief ends">
         <Info>
           Close by synchronizing watches: “The time will be 0912 in ten seconds… five, four, three,
           two, one — HACK.”

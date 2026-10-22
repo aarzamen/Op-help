@@ -21,7 +21,7 @@ Five tabs (bottom nav on phones, top nav ≥ 900 px), one `view` state in `App.t
 | GUIDE | `views/GuideView.tsx` | The whole method on one page: 5-step flow, the graded checklist as a rehearsal tracker, taking apart higher's order (specified / implied / essential), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, warfighting concepts, a searchable glossary |
 | ANALYZE | `views/AnalyzeView.tsx` | METT-T worksheet with the course's rules and labeled examples |
 | ORDER | `views/OrderView.tsx` | Orientation + ¶1–5 + time hack, each block listing what the grading sheet checks (with points), TEMPLATE quick-fill, a tasking-statement builder |
-| CASEVAC | `views/CasevacView.tsx` | HLZ, CCP and route sketches (drag markers, overlay a map image), 9-line, and the graded ¶4.a paragraph; PNG per sheet + a packet PDF |
+| CASEVAC | `casevac/CasevacTab.tsx` | HLZ, CCP and route sketches edited in a full-screen workspace (tap / drag / pinch, inspector, undo), device handoff (link or file), 9-line, and the graded ¶4.a paragraph; PNG per sheet + a packet PDF |
 | TOOLS | `views/ToolsView.tsx` | PCC/PCI, order types, TCMs, map symbols |
 
 > Note: the AI Studio Gemini scaffolding has been **removed** — no `@google/genai`
@@ -61,9 +61,10 @@ index.html                 # entry; /src/main.tsx; favicon, viewport-fit=cover
 public/favicon.svg
 src/main.tsx               # React root; ErrorBoundary + self-hosted @fontsource imports
 src/App.tsx                # shell only: header (clock, compass, blackout, PDF, copy), nav, view switch, toast
-src/views/                 # one file per tab (Guide, Analyze, Order, Casevac, Tools)
+src/views/                 # one file per tab (Guide, Analyze, Order, Tools); CASEVAC lives in src/casevac/
 src/components/
-  ui.tsx                   # Block / SubBlock accordions, LeafItem, Callout, SectionLabel, Info
+  ui.tsx                   # Block / SubBlock accordions (semantic Theme), LeafItem, Callout, StatusIcon, Info
+  icons.tsx                # the app's own icon set (lucide construction): tiles, CASEVAC, TCMs
   notes.tsx                # InlineNotes (TEMPLATE + DICTATE), NotesBlock, useDictation
   form.tsx                 # TextField, NumberField, SelectField, CheckGroup, Segmented, FieldRow
   compass.tsx              # TopCompass (G/M arrows, real G-M angle), GetGridButton
@@ -80,7 +81,8 @@ src/ErrorBoundary.tsx      # top-level error boundary (wraps <App/> in main.tsx)
 src/globals.d.ts           # ambient types: native ASR bridge, Web Speech, app CustomEvents
 src/index.css              # design tokens (:root), components, blackout theme, map-symbols
 metadata.json              # AI Studio app manifest (name, permissions)
-docs/                      # specs: map-symbols integration, dictation/ASR, hardening (B–E)
+docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E), CASEVAC workspace,
+                           # DESIGN-SYSTEM.md (what each color means, icon rules)
 ```
 
 ## Architecture & conventions (read before editing)
@@ -115,6 +117,14 @@ docs/                      # specs: map-symbols integration, dictation/ASR, hard
 - **Theming via CSS variables.** Light theme is `:root` in `index.css`; **blackout** sets
   `data-theme="blackout"` on `<html>` and remaps every token to red-on-black. Use tokens
   (including the sketch / triage / callout tokens) so new UI inherits blackout for free.
+- **Colors mean paragraphs** (`docs/DESIGN-SYSTEM.md`). `Theme` is semantic — `orient |
+  situation | mission | execution | admin | command | ref` — and a block takes the color of
+  the part of the order it feeds (all of CASEVAC is ¶4 `admin`). Never pick one for looks.
+  Each `.theme-<role>` sets `--tone*` vars, so the nearest themed ancestor wins. Status
+  (ok / warn / bad) is a tinted strip with a `StatusIcon`, never a solid tile.
+- **Tile glyphs:** letters and numerals stay where they are the content (ORDER ¶ numbers,
+  METT-T letters, mnemonic codes like TK / CI / EN); anything else is an icon from
+  `components/icons.tsx` (24-grid, 2 px stroke, `currentColor`; CSS sizes it per tile).
 - **Accordions are real buttons.** `Block` / `SubBlock` headers are `<button
   aria-expanded>`; closed bodies are `inert` and animate with a grid-row transition.
 - **Domain accuracy matters.** Doctrinal content (SMEAC, METT-T, KOCOA, TCMs, APP-6, the
@@ -123,6 +133,20 @@ docs/                      # specs: map-symbols integration, dictation/ASR, hard
 
 ### CASEVAC module (`src/casevac/`)
 
+- **Self-contained.** The module imports the host app only through `casevac/host.ts`
+  (storage, toasts, form controls, `Block`, icons, `StatusIcon`). Keep it that way so the
+  planner can be split into its own app later. `CasevacTab.tsx` is the tab.
+- **Editing happens in the workspace** (`workspace/`, spec in
+  `docs/SPEC-casevac-workspace.md`): a portal over the page with the body scroll-locked.
+  `camera.ts` (center + meters-per-pixel → viewBox, fit, clamp, zoom-at), `useGestures.ts`
+  (tap / drag item / pan / pinch / wheel), `items.ts` (every selectable item by
+  `data-item` id: list, move, delete, duplicate, add, grid↔position), `useHistory.ts`
+  (undo/redo; typing and drags coalesce), `Inspector.tsx` (bottom sheet < 900 px, side
+  panel above). The tab itself shows a static preview (TAP TO EDIT) and the forms.
+- **Handoff** (`handoff.ts`): SEND LINK puts the plan in the URL fragment (`#cv=`,
+  deflate-raw + base64url; never sent to a server; images excluded); SAVE / OPEN FILE
+  carries plan + background images as JSON. Everything incoming goes through
+  `normalizePlan` / `normalizeBackground` (`model.ts`).
 - **World coordinates are meters, x east / y north, origin at the sheet's reference grid**
   (HLZ center, CCP grid, or route origin). SVG is y-down, so draw with `-y` (`pts()` in
   `geo.ts`, `Txt`/`Arrow` in `svg.tsx` take world coords).
@@ -134,10 +158,12 @@ docs/                      # specs: map-symbols integration, dictation/ASR, hard
   checks, wind components), `ccp.ts`, `route.ts` (timeline, golden-hour check),
   `layout.ts` (label clamping, free spots for the north arrow / wind rose).
 - Layers render geometry: `HlzLayer`, `CcpLayer`, `RouteLayer` (schematic + map) inside
-  `SketchCanvas` (`svg.tsx`: paper, imagery, real MGRS gridlines, north arrow, scale bar,
-  pointer dragging of any `[data-drag]` child).
-- `palette.ts` — `UI_PALETTE` (CSS vars, blackout-aware) vs `PRINT_PALETTE` (hex) for
-  exports. `exportSheet.tsx` renders a 1600×1000 sheet → embeds the fonts → PNG at 2×;
+  `SketchCanvas` (`svg.tsx`, presentational: paper, imagery, real MGRS gridlines, north
+  arrow, scale bar, selection ring; an optional `camera` viewBox for the workspace).
+  Layers take `interactive` to add `data-item` hit targets.
+- `palette.ts` — `UI_PALETTE` (CSS vars, blackout-aware) vs `PRINT_PALETTE` (hex, lighter
+  line weight `lw` 0.55, semibold labels, smaller arrowheads) for exports. Multiply every
+  stroke by `P.lw`. `exportSheet.tsx` renders a 1600×1000 sheet → embeds the fonts → PNG at 2×;
   the packet PDF is three sheets + the 9-line card + ¶4.a (images deflated, ~1 MB).
 - `sheetData.ts` — the data-block lines, the read-aloud 9-line script (JTS card format,
   wartime/peacetime lines 6 and 9), and the graded ¶4.a paragraph text.
@@ -193,6 +219,21 @@ docs/                      # specs: map-symbols integration, dictation/ASR, hard
       grid north); `insert-note` replaced by `appendNote` (no lost appends); accordions
       and nav are real buttons; 16 px inputs on iOS (no zoom-on-focus); PDF text made
       WinAnsi-safe.
+
+### Task 3 — CASEVAC workspace, device handoff, design system (DONE in this change)
+
+- [x] **Sketch workspace.** EDIT SKETCH opens a full-screen editor that holds the page
+      still (no scrolling into other sections): tap an item for its options, drag, pinch /
+      wheel zoom, one-finger pan, tap empty ground to ADD HERE, undo / redo, typed grids,
+      arrow-key nudges, approach / departure handles. Phone = bottom sheet (peek / half /
+      full); iPad and desktop = side panel. Spec: `docs/SPEC-casevac-workspace.md`.
+- [x] **Phone → iPad / computer handoff.** SEND LINK (plan in the URL fragment) and SAVE /
+      OPEN FILE (plan + overlay images); incoming plans are validated.
+- [x] **Lighter print.** Exported sheets draw lines at ~0.55× weight with semibold labels.
+- [x] **Module boundary.** `src/casevac/` reaches the app only through `host.ts`.
+- [x] **Colors mean paragraphs; one icon language.** Semantic `Theme`, `--c-*` tokens,
+      custom icons replace stray glyphs and the color ⏱ emoji, status strips carry icons,
+      rubric sections carry their paragraph color. See `docs/DESIGN-SYSTEM.md`.
 
 ### Milestone A — safety & cleanup (DONE)
 
@@ -259,7 +300,7 @@ docs/                      # specs: map-symbols integration, dictation/ASR, hard
       `aria-current` / `aria-pressed` / `aria-expanded`; closed panels are `inert`.
 - [x] **Split `App.tsx`** and move doctrinal lists into `src/content/`.
 - [ ] **Tests.** Add Vitest + RTL; the pure CASEVAC geometry (`geo.ts`, `hlz.ts`,
-      `route.ts`, `sheetData.ts`) and `normalizeChecklistItems` are the easy first targets.
+      `route.ts`, `sheetData.ts`, `workspace/camera.ts`, `workspace/items.ts`, `handoff.ts`) and `normalizeChecklistItems` are the easy first targets.
 
 **Candidates (proposed, not built)**
 - [ ] **Terrain-model kit printout** — labels for every control measure / unit marker

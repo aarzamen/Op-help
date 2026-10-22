@@ -4,11 +4,24 @@ import { useLocalStorage } from '../lib/storage';
 import { RUBRIC, RUBRIC_TOTAL, sectionPts } from '../content/rubric';
 import { GLOSSARY } from '../content/glossary';
 import { TACTICAL_TASKS, PURPOSE_VERBS } from '../content/tacticalTasks';
+import type { Theme } from './ui';
 
 export interface BriefState {
   done: Record<string, boolean>;
   owner: Record<string, string>;
 }
+
+/** Each grading-sheet section takes the color of the part of the order it grades. */
+const SECTION_THEME: Record<string, Theme> = {
+  prep: 'ref',
+  orient: 'orient',
+  sit: 'situation',
+  mis: 'mission',
+  exe: 'execution',
+  al: 'admin',
+  cs: 'command',
+  gen: 'ref',
+};
 
 const BRIEFER_HINT = {
   officer: 'officer briefer',
@@ -51,7 +64,7 @@ export const RubricChecklist = () => {
       {RUBRIC.map((sec) => {
         const got = sec.items.reduce((n, i) => n + (s.done[i.id] ? i.pts : 0), 0);
         return (
-          <div key={sec.id} className="rubric-sec">
+          <div key={sec.id} className={`rubric-sec theme-${SECTION_THEME[sec.id] ?? 'ref'}`}>
             <div className="rubric-sec-head">
               <span className="rubric-sec-title">{sec.title}</span>
               <span className="pts">

@@ -1,4 +1,16 @@
 import { ArrowRight } from 'lucide-react';
+import {
+  IconClinical,
+  IconDirective,
+  IconDissect,
+  IconGlossary,
+  IconLoop,
+  IconPen,
+  IconRubric,
+  IconTerrain,
+  IconVerb,
+  IconX,
+} from '../components/icons';
 import { Block, Callout, Info, LeafItem, SectionLabel, SubBlock } from '../components/ui';
 import { Glossary, RubricChecklist, TaskVerbList } from '../components/GuideWidgets';
 import type { ViewId } from '../App';
@@ -72,8 +84,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     <SectionLabel>THE COURSE</SectionLabel>
 
     <Block
-      theme="red"
-      letter="✓"
+      theme="ref"
+      letter={<IconRubric />}
       name="HOW THE BRIEF IS GRADED"
       desc="100 points · assign sections · check off as you rehearse"
       defaultOpen
@@ -87,8 +99,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="blue"
-      letter="◇"
+      theme="mission"
+      letter={<IconDissect />}
       name="TAKING APART HIGHER'S ORDER"
       desc="Specified, implied and essential tasks — with a worked example"
     >
@@ -96,7 +108,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         Your mission is the tasking statement higher wrote <em>to you</em> (in their ¶3.c Tasks).
         Everything else in their order is context — and a hiding place for more tasks.
       </Info>
-      <SubBlock theme="blue" letter="S" name="SPECIFIED TASKS — WHAT THE ORDER SAYS">
+      <SubBlock theme="mission" letter="S" name="SPECIFIED TASKS — WHAT THE ORDER SAYS">
         <Info>
           Stated outright. Read the whole order, not just the tasks paragraph: specified tasks hide
           in coordinating instructions, admin & logistics, command & signal, and the annexes.
@@ -108,7 +120,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           Command & Signal paragraph — nowhere near the tasks paragraph.
         </Callout>
       </SubBlock>
-      <SubBlock theme="blue" letter="I" name="IMPLIED TASKS — WHAT YOU MUST DO ANYWAY">
+      <SubBlock theme="mission" letter="I" name="IMPLIED TASKS — WHAT YOU MUST DO ANYWAY">
         <Info>
           Not stated, but the mission fails without them. Five questions surface most of them:
         </Info>
@@ -170,14 +182,14 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           tasks someone must be assigned; drop “clean weapons” and “tie boots.”
         </Callout>
       </SubBlock>
-      <SubBlock theme="blue" letter="E" name="ESSENTIAL TASK — WHAT DEFINES SUCCESS">
+      <SubBlock theme="mission" letter="E" name="ESSENTIAL TASK — WHAT DEFINES SUCCESS">
         <Info>
           The task that must be done or the mission fails — usually the one in your mission
           statement. It goes to your main effort, word for word (“deliberate redundancy”). Everyone
           else's tasks enable it.
         </Info>
       </SubBlock>
-      <SubBlock theme="blue" letter="C/R" name="CONSTRAINTS & RESTRAINTS">
+      <SubBlock theme="mission" letter="C/R" name="CONSTRAINTS & RESTRAINTS">
         <Info>
           Things higher makes you do (constraints — e.g. “displace the COC every 36 hours”) and
           things it forbids (restraints — e.g. “no white light after EENT”). The ROE come from
@@ -190,18 +202,18 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="green"
-      letter="Σ"
+      theme="execution"
+      letter={<IconPen />}
       name="WRITING IT — THE FORMULAS"
       desc="Mission, tasking statements, intent, parts, enemy"
     >
-      <SubBlock theme="green" letter="M" name="MISSION — VERBATIM">
+      <SubBlock theme="mission" letter="M" name="MISSION — VERBATIM">
         <Info>
           Read higher's tasking statement to you word for word, MHP/THP and BPT included. Don't
           paraphrase it and don't merge two into one.
         </Info>
       </SubBlock>
-      <SubBlock theme="green" letter="TK" name="TASKING STATEMENTS — THE MOST IMPORTANT PART">
+      <SubBlock theme="execution" letter="TK" name="TASKING STATEMENTS — THE MOST IMPORTANT PART">
         <div className="formula">
           [Unit]. You are the [main effort / supporting effort #]. Upon [trigger], [tactical task]
           [where] IOT [purpose]. [MHP/THP]
@@ -219,7 +231,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           TASKING STATEMENT BUILDER → ORDER ¶3 <ArrowRight size={11} />
         </button>
       </SubBlock>
-      <SubBlock theme="green" letter="CI" name="COMMANDER'S INTENT">
+      <SubBlock theme="execution" letter="CI" name="COMMANDER'S INTENT">
         <div className="formula">
           Purpose · Method · EN center of gravity · EN critical vulnerability · Exploitation ·
           Endstate
@@ -231,7 +243,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           for both sides.
         </Info>
       </SubBlock>
-      <SubBlock theme="green" letter="P" name="PARTS — BW / EW / CE / CS">
+      <SubBlock theme="execution" letter="P" name="PARTS — BW / EW / CE / CS">
         <div className="formula">Begins With · Ends With · Critical Event · Conditions Set</div>
         <Callout kind="example" title="instructor notes">
           Part One begins with movement from the assembly area and ends with occupation of the ORP.
@@ -244,14 +256,14 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           — and name units only in the tasks.
         </Info>
       </SubBlock>
-      <SubBlock theme="green" letter="EN" name="ENEMY — SALUTE → DRAW-D → EMLCOA">
+      <SubBlock theme="situation" letter="EN" name="ENEMY — SALUTE → DRAW-D → EMLCOA">
         <Info>
           SALUTE describes the enemy you face now. DRAW-D rates what they can do — most likely,
           likely, unlikely — with exactly one “most likely.” The EMLCOA marries the two into one
           paragraph about what they will do when you execute.
         </Info>
       </SubBlock>
-      <SubBlock theme="green" letter="!" name="SAY IT LIKE A DIRECTIVE">
+      <SubBlock theme="ref" letter={<IconDirective />} name="SAY IT LIKE A DIRECTIVE">
         <table className="ref-table">
           <thead>
             <tr>
@@ -282,8 +294,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="amber"
-      letter="Aa"
+      theme="execution"
+      letter={<IconVerb />}
       name="WORDS MEAN THINGS — TACTICAL TASKS"
       desc="Doctrinal task verbs with plain-English meanings"
     >
@@ -295,12 +307,12 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="purple"
-      letter="▣"
+      theme="orient"
+      letter={<IconTerrain />}
       name="THE TERRAIN MODEL BRIEF"
       desc="Build it, run it, split it four ways"
     >
-      <SubBlock theme="purple" letter="B" name="BUILD THE MODEL">
+      <SubBlock theme="orient" letter="B" name="BUILD THE MODEL">
         <LeafItem
           letter="N"
           text={
@@ -365,7 +377,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           }
         />
       </SubBlock>
-      <SubBlock theme="purple" letter="R" name="RUN THE BRIEF">
+      <SubBlock theme="ref" letter="R" name="RUN THE BRIEF">
         <LeafItem
           letter="1"
           text={
@@ -412,7 +424,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           Rehearse with a timer — 30 to 60 minutes.
         </Info>
       </SubBlock>
-      <SubBlock theme="purple" letter="4" name="SPLITTING IT FOUR WAYS">
+      <SubBlock theme="ref" letter="4" name="SPLITTING IT FOUR WAYS">
         <Info>
           The course standard is an officer–enlisted pair: the officer briefs Orientation,
           Situation, Mission and Execution; the enlisted leader briefs Admin & Logistics and Command
@@ -448,7 +460,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
           Execution.”
         </Info>
       </SubBlock>
-      <SubBlock theme="purple" letter="✗" name="COMMON MISTAKES">
+      <SubBlock theme="ref" letter={<IconX />} name="COMMON MISTAKES">
         <LeafItem
           letter="1"
           text={<span>Narrating the map — terrain without the “so what.”</span>}
@@ -490,8 +502,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="slate"
-      letter="↔"
+      theme="ref"
+      letter={<IconClinical />}
       name="COMING FROM CLINICAL PRACTICE"
       desc="Memory hooks for clinicians — social work, nursing, medicine"
     >
@@ -601,8 +613,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="slate"
-      letter="▲"
+      theme="ref"
+      letter={<IconLoop />}
       name="WARFIGHTING CONCEPTS"
       desc="Levels of war, maneuver vs attrition, OODA, tenets"
     >
@@ -643,7 +655,7 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
         }
       />
       <LeafItem
-        letter="⟳"
+        letter="OODA"
         text={
           <span>
             <strong>OODA loop</strong> — observe, orient, decide, act. Whoever cycles faster
@@ -664,8 +676,8 @@ const GuideView = ({ onNavigate }: { onNavigate: (v: ViewId) => void }) => (
     </Block>
 
     <Block
-      theme="slate"
-      letter="A–Z"
+      theme="ref"
+      letter={<IconGlossary />}
       name="GLOSSARY"
       desc="Every acronym in the course order, searchable"
     >

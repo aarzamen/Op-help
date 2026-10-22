@@ -10,6 +10,7 @@ import {
 } from '../lib/storage';
 import { TEMPLATES } from '../content/templates';
 import { Block } from './ui';
+import { IconNotes } from './icons';
 
 const hasNativeAppleSpeech = () =>
   typeof window !== 'undefined' && !!window.webkit?.messageHandlers?.opordSpeech;
@@ -279,7 +280,7 @@ export const NotesBlock = ({ sectionKey, label }: { sectionKey: string; label: s
   const { isDictating, toggleDictation, dictationStatus } = useDictation(handleDictationResult);
 
   return (
-    <Block theme="slate" letter="✎" name="NOTES" desc={`Free notes for ${label}`}>
+    <Block theme="ref" letter={<IconNotes />} name="NOTES" desc={`Free notes for ${label}`}>
       <div className="notes" style={{ borderTop: 'none', marginTop: 0 }}>
         <div className="notes-head">
           <div className="notes-label">{label} NOTES</div>

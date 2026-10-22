@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Copy, ImagePlus, Move, Plus, RotateCcw, Trash2, X } from 'lucide-react';
-import { NumberField, Segmented, SelectField, TextField } from '../host';
+import { NumberField, Segmented, SelectField, StatusIcon, TextField } from '../host';
 import { eastWest, len, norm360, pad3, azimuth, type NorthReference, type Vec } from '../geo';
 import type { HlzGeom } from '../hlz';
 import {
@@ -208,8 +208,11 @@ export function Inspector(p: InspectorProps) {
               <TextField label="Note" value={o.note} onChange={(v) => setO({ note: v }, 'note')} />
               {c && c.ok !== null && (
                 <div className={`finding finding-${c.ok ? 'ok' : 'bad'}`}>
-                  {c.ok ? '10:1 ✓' : '10:1 ✗'} on {c.path}: {Math.round(c.along)} m from the nearest
-                  LP, needs {c.required} m
+                  <StatusIcon level={c.ok ? 'ok' : 'bad'} />
+                  <span>
+                    10:1 on {c.path}: {Math.round(c.along)} m from the nearest LP, needs{' '}
+                    {c.required} m
+                  </span>
                 </div>
               )}
               {refGrid && <GridField refGrid={refGrid} pos={o.pos} onMove={move} />}

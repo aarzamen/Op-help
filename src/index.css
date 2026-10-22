@@ -18,6 +18,14 @@
   --accent-amber: #D4A017;
   --accent-purple: #5A189A;
   --accent-slate: #3D4B5C;
+  /* order colors: which paragraph a thing belongs to (docs/DESIGN-SYSTEM.md) */
+  --c-orient: #86592D;
+  --c-situation: #0A2540;
+  --c-mission: #D7263D;
+  --c-execution: #2D6A4F;
+  --c-admin: #D4A017;
+  --c-command: #5A189A;
+  --c-ref: #3D4B5C;
   --border: #D4D2CD;
   --border-light: #E8E6E1;
   --shadow: rgba(0,0,0,0.08);
@@ -231,7 +239,7 @@ body {
   transition: border-color 0.2s, box-shadow 0.2s;
   animation: fadeSlideIn 0.3s ease both;
 }
-.block.open { border-color: var(--accent-blue); box-shadow: 0 2px 12px var(--shadow); }
+.block.open { border-color: var(--tone, var(--accent-blue)); box-shadow: 0 2px 12px var(--shadow); }
 
 .block-header {
   display: flex; align-items: center; gap: 10px;
@@ -307,28 +315,27 @@ body {
 .leaf-text em { font-style: normal; color: var(--text-primary); font-weight: 600; }
 .leaf-split { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 
-/* ===== COLOR THEMES ===== */
+/* ===== ORDER COLORS =====
+   A tile's color says which part of the order it belongs to (docs/DESIGN-SYSTEM.md).
+   Each .theme-<role> sets --tone* on its element, so the nearest themed ancestor wins:
+   a SubBlock can take a different paragraph's color than its Block, and its leaves follow. */
 
-.theme-blue .block-letter { background: var(--accent-blue); color: #fff; }
-.theme-red .block-letter { background: var(--accent-red); color: #fff; }
-.theme-green .block-letter { background: var(--accent-green); color: #fff; }
-.theme-amber .block-letter { background: var(--accent-amber); color: #1A1A1A; }
-.theme-purple .block-letter { background: var(--accent-purple); color: #fff; }
-.theme-slate .block-letter { background: var(--accent-slate); color: #fff; }
+.theme-orient { --tone: var(--c-orient); --tone-on: #fff; --tone-ink: #6E4823; --tone-soft: #F1E6DA; --tone-faint: #F7EFE6; }
+.theme-situation { --tone: var(--c-situation); --tone-on: #fff; --tone-ink: var(--c-situation); --tone-soft: #D6E8F6; --tone-faint: #EBF3FA; }
+.theme-mission { --tone: var(--c-mission); --tone-on: #fff; --tone-ink: #B42318; --tone-soft: #FADBD8; --tone-faint: #FDE8E8; }
+.theme-execution { --tone: var(--c-execution); --tone-on: #fff; --tone-ink: var(--c-execution); --tone-soft: #D4EDDA; --tone-faint: #E8F5E9; }
+.theme-admin { --tone: var(--c-admin); --tone-on: #1A1A1A; --tone-ink: #7A5A00; --tone-soft: #FFF3CD; --tone-faint: #FFF8E1; }
+.theme-command { --tone: var(--c-command); --tone-on: #fff; --tone-ink: var(--c-command); --tone-soft: #E8D5F5; --tone-faint: #F3E5F5; }
+.theme-ref { --tone: var(--c-ref); --tone-on: #fff; --tone-ink: var(--c-ref); --tone-soft: #E1E5EA; --tone-faint: #EDF0F3; }
 
-.theme-blue .sub-letter { background: #D6E8F6; color: var(--accent-blue); }
-.theme-red .sub-letter { background: #FADBD8; color: #B42318; }
-.theme-green .sub-letter { background: #D4EDDA; color: var(--accent-green); }
-.theme-amber .sub-letter { background: #FFF3CD; color: #7A5A00; }
-.theme-purple .sub-letter { background: #E8D5F5; color: var(--accent-purple); }
-.theme-slate .sub-letter { background: #E1E5EA; color: var(--accent-slate); }
+.block-letter { background: var(--tone, var(--c-ref)); color: var(--tone-on, #fff); }
+.sub-letter { background: var(--tone-soft, var(--surface-alt)); color: var(--tone-ink, var(--text-primary)); }
+.leaf-letter { background: var(--tone-faint, var(--surface-alt)); color: var(--tone-ink, var(--text-primary)); }
 
-.theme-blue .leaf-letter { background: #EBF3FA; color: var(--accent-blue); }
-.theme-red .leaf-letter { background: #FDE8E8; color: #B42318; }
-.theme-green .leaf-letter { background: #E8F5E9; color: var(--accent-green); }
-.theme-amber .leaf-letter { background: #FFF8E1; color: #7A5A00; }
-.theme-purple .leaf-letter { background: #F3E5F5; color: var(--accent-purple); }
-.theme-slate .leaf-letter { background: #EDF0F3; color: var(--accent-slate); }
+/* icons sit in the same tiles as letters; CSS sizes them per tile */
+.block-letter svg { width: 22px; height: 22px; }
+.sub-letter svg { width: 16px; height: 16px; }
+.leaf-letter svg { width: 14px; height: 14px; }
 
 /* ===== CALLOUTS ===== */
 
@@ -503,6 +510,10 @@ select.field-input { appearance: auto; padding-right: 4px; }
 .rubric-sec { border-top: 1px solid var(--border-light); padding: 8px 0; }
 .rubric-sec-head { display: flex; justify-content: space-between; align-items: center; }
 .rubric-sec-title { font: 800 10.5px var(--mono); letter-spacing: 1px; }
+.rubric-sec-title::before {
+  content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 7px;
+  border-radius: 2px; background: var(--tone, var(--c-ref)); vertical-align: 0.5px;
+}
 .rubric-owner { margin: 6px 0 4px; padding: 5px 8px; font-size: 13px; }
 .rubric-item { display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: start; padding: 5px 0; font-size: 12.5px; line-height: 1.45; cursor: pointer; }
 .rubric-item input { width: 17px; height: 17px; margin-top: 1px; accent-color: var(--accent-green); }
@@ -668,7 +679,8 @@ html.ws-open, html.ws-open body { overscroll-behavior: none; }
 .ws-bg input[type='range'] { width: 100%; accent-color: var(--accent-blue); }
 
 .findings { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
-.finding { font: 600 11px/1.4 var(--mono); padding: 6px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; }
+.finding { font: 600 11px/1.4 var(--mono); padding: 6px 8px; border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; display: flex; align-items: flex-start; gap: 6px; }
+.finding-icon { flex: none; margin-top: 1.5px; }
 .finding-ok { background: var(--ok-bg); border-color: var(--accent-green); color: var(--ok-ink); }
 .finding-warn { background: var(--warn-bg); border-color: var(--accent-amber); color: var(--warn-ink); }
 .finding-bad { background: var(--bad-bg); border-color: var(--accent-red); color: var(--bad-ink); }
@@ -702,6 +714,13 @@ html.ws-open, html.ws-open body { overscroll-behavior: none; }
   --accent-amber: #ff0000;
   --accent-purple: #ff0000;
   --accent-slate: #ff0000;
+  --c-orient: #ff0000;
+  --c-situation: #ff0000;
+  --c-mission: #ff0000;
+  --c-execution: #ff0000;
+  --c-admin: #ff0000;
+  --c-command: #ff0000;
+  --c-ref: #ff0000;
   --border: #330000;
   --border-light: #220000;
   --shadow: rgba(255,0,0,0.1);
@@ -727,8 +746,7 @@ html.ws-open, html.ws-open body { overscroll-behavior: none; }
   --triage-expectant: #ff0000;
 }
 
-:root[data-theme='blackout'] .block-letter,
-:root[data-theme='blackout'] .theme-amber .block-letter {
+:root[data-theme='blackout'] .block-letter {
   background: #ff0000;
   color: #000000;
 }

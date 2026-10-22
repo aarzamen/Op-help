@@ -261,10 +261,10 @@ export function hlzFindings(
     const what = `${o.kind.toUpperCase()} ${o.heightM} m on ${c.path}`;
     out.push(
       c.ok
-        ? { level: 'ok', text: `10:1 ✓ ${what}: ${Math.round(c.along)} m ≥ ${c.required} m` }
+        ? { level: 'ok', text: `10:1 ${what}: ${Math.round(c.along)} m ≥ ${c.required} m` }
         : {
             level: 'bad',
-            text: `10:1 ✗ ${what}: ${Math.round(c.along)} m < ${c.required} m — move LPs, lengthen the zone, or change heading`,
+            text: `10:1 ${what}: ${Math.round(c.along)} m < ${c.required} m — move LPs, lengthen the zone, or change heading`,
           }
     );
   });

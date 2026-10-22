@@ -1,4 +1,13 @@
 import { Block, Info, LeafItem, SectionLabel, SubBlock } from '../components/ui';
+import {
+  IconBoundary,
+  IconChecklist,
+  IconFireControl,
+  IconObjective,
+  IconOrders,
+  IconPhaseLine,
+  IconWire,
+} from '../components/icons';
 import { NotesBlock } from '../components/notes';
 import EditableChecklist from '../components/EditableChecklist';
 import { CHECKLIST_KEYS } from '../lib/checklists';
@@ -9,8 +18,8 @@ const ToolsView = () => (
   <div>
     <SectionLabel>SUPERVISE · PCC / PCI</SectionLabel>
     <Block
-      theme="green"
-      letter="✓"
+      theme="execution"
+      letter={<IconChecklist />}
       name="PCC / PCI"
       desc="Pre-combat checks (gear) and inspections (people)"
     >
@@ -19,7 +28,7 @@ const ToolsView = () => (
         <strong>PCI</strong> inspects <em>people</em> — knowledge, mental state, readiness. Edit any
         list to fit the mission; edits export with the TOOLS PDF.
       </Info>
-      <SubBlock theme="blue" letter="C" name="CONVOY">
+      <SubBlock theme="execution" letter="C" name="CONVOY">
         <EditableChecklist
           storageKey={CHECKLIST_KEYS.convoyGear}
           title="Gear (PCC)"
@@ -50,7 +59,7 @@ const ToolsView = () => (
           ]}
         />
       </SubBlock>
-      <SubBlock theme="red" letter="M" name="EXECUTING A MISSION">
+      <SubBlock theme="execution" letter="M" name="EXECUTING A MISSION">
         <EditableChecklist
           storageKey={CHECKLIST_KEYS.missionGear}
           title="Gear (PCC)"
@@ -79,7 +88,7 @@ const ToolsView = () => (
           ]}
         />
       </SubBlock>
-      <SubBlock theme="amber" letter="G" name="GENERIC / ANY TASKING">
+      <SubBlock theme="execution" letter="G" name="GENERIC / ANY TASKING">
         <Info>
           For any tasking, run the checks in this order: gear → security → comms → med → people.
         </Info>
@@ -107,7 +116,12 @@ const ToolsView = () => (
     </Block>
 
     <SectionLabel>ORDERS</SectionLabel>
-    <Block theme="blue" letter="≡" name="ORDER TYPES" desc="OPORD, WARNORD, FRAGORD, back-brief">
+    <Block
+      theme="ref"
+      letter={<IconOrders />}
+      name="ORDER TYPES"
+      desc="OPORD, WARNORD, FRAGORD, back-brief"
+    >
       <LeafItem
         letter="OP"
         text={
@@ -147,8 +161,8 @@ const ToolsView = () => (
 
     <SectionLabel>TACTICAL CONTROL MEASURES</SectionLabel>
     <Block
-      theme="green"
-      letter="⬒"
+      theme="orient"
+      letter={<IconBoundary />}
       name="BOUNDARIES & AREAS"
       desc="Who is responsible for what ground"
     >
@@ -198,7 +212,12 @@ const ToolsView = () => (
         }
       />
     </Block>
-    <Block theme="blue" letter="⊸" name="LINES & ROUTES" desc="Phase lines, LD, LOA, axes, routes">
+    <Block
+      theme="orient"
+      letter={<IconPhaseLine />}
+      name="LINES & ROUTES"
+      desc="Phase lines, LD, LOA, axes, routes"
+    >
       <LeafItem
         letter="PL"
         text={
@@ -271,8 +290,8 @@ const ToolsView = () => (
       />
     </Block>
     <Block
-      theme="red"
-      letter="◎"
+      theme="orient"
+      letter={<IconObjective />}
       name="POINTS & POSITIONS"
       desc="Objectives, checkpoints, rally points"
     >
@@ -340,7 +359,12 @@ const ToolsView = () => (
         }
       />
     </Block>
-    <Block theme="amber" letter="⊘" name="FIRE CONTROL" desc="CFL, NFL, RFL, FPF, PDF">
+    <Block
+      theme="orient"
+      letter={<IconFireControl />}
+      name="FIRE CONTROL"
+      desc="CFL, NFL, RFL, FPF, PDF"
+    >
       <LeafItem
         letter="CFL"
         text={
@@ -395,8 +419,8 @@ const ToolsView = () => (
       />
     </Block>
     <Block
-      theme="purple"
-      letter="◫"
+      theme="orient"
+      letter={<IconWire />}
       name="ENGINEER MEASURES"
       desc="EAB, ADR, obstacle control, LP/OP, ECP"
     >

@@ -29,12 +29,18 @@ Rules:
   a different paragraph (e.g. "Enemy" inside the GUIDE's writing formulas is navy).
 - The `Theme` prop is semantic: `orient | situation | mission | execution | admin |
   command | ref`. Never pick a theme for looks.
+- Implementation: `.theme-<role>` sets `--tone` (solid), `--tone-on` (text on solid),
+  `--tone-ink`, `--tone-soft` and `--tone-faint` on its element; block / sub / leaf tiles,
+  the open-block border and the rubric section swatches read those, so the nearest themed
+  ancestor wins.
+- UI chrome (active tab, selected chip or segment, focus ring) uses the ink navy
+  `--accent-blue`. It never appears as a tile, so it can't be read as ¶1.
 
 ## 2. Status colors (findings, checks, callouts)
 
 `--ok-*` green, `--warn-*` amber, `--bad-*` red — **always** paired with an icon
-(✓ check, ! alert, ✗ cross) and shown as a tinted strip, never as a solid tile, so a
-status can't be mistaken for a paragraph. Callouts: INSTRUCTOR TIP (ok tint), COMMON
+(`StatusIcon`: circle-check, circle-alert, circle-x) and shown as a tinted strip, never as
+a solid tile, so a status can't be mistaken for a paragraph. Callouts: INSTRUCTOR TIP (ok tint), COMMON
 MISTAKE (bad tint), EXAMPLE and NOTE (neutral tints).
 
 ## 3. Sketch symbology (inside SVG sketches only)
@@ -56,10 +62,10 @@ One icon language for every tile, chip and toolbar:
   dots — the same construction as the lucide icons in the header and nav, so custom and
   library icons sit together.
 - Custom icons (`src/components/icons.tsx`) cover what lucide doesn't draw in military
-  terms: HLZ, CCP, security position, TCM boundary, phase line, objective, obstacle wire,
-  terrain model, tasking statement, grading sheet, stopwatch (replaces the ⏱ emoji, which
-  rendered as a color emoji on iOS), etc.
-- **Letters and numerals stay where they *are* the content:** paragraph numbers on ORDER
-  tiles (1–5), METT-T letters, and mnemonic sub-block codes (TK, CI, EN). Everything else
+  terms: HLZ, windsock, CCP, security, marking panel, evacuation chain, TCM boundary,
+  phase line, objective, fire control, concertina wire, terrain model, grading sheet,
+  stopwatch (replaces the ⏱ emoji, which rendered as a color emoji on iOS), etc.
+- **Letters and numerals stay where they *are* the content:** the ORDER tiles (O, 1–5),
+  METT-T letters, the ¶4a sheet, and mnemonic codes (TK, CI, EN, OODA). Everything else
   that was a stray glyph (✓ ◇ Σ Aa ▣ ↔ ▲ ⊸ ⊘ ⬒ ◫ ✎ ⏱ #) is an icon.
 - Icons are decorative (`aria-hidden`); the block name carries the meaning.
