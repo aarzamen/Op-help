@@ -515,7 +515,7 @@ export const CcpForm = ({ plan, update }: { plan: CasevacPlan; update: Update })
             ]}
           />
         </div>
-        <Callout kind="tip" title="Choosing the site">
+        <Callout kind="note" title="Choosing the site">
           Close to where casualties will happen but out of direct fire · cover and concealment,
           including from drones · on the lines of drift and near the evacuation route · reachable by
           foot and vehicle · room to grow for a MASCAL · one way in, one way out.
@@ -852,7 +852,7 @@ export const RouteForm = ({
           ATP 4-02.2 sets Priority at 4 h. The course's example LCT order used 3 h for Priority —
           whatever higher's order says goes in yours.
         </Callout>
-        <Callout kind="tip" title="Three different questions">
+        <Callout kind="note" title="Three different questions">
           <strong>Triage</strong> (Immediate, Delayed, Minimal, Expectant) is{' '}
           <em>who gets treated first</em>. <strong>Precedence</strong> (Urgent → Convenience) is{' '}
           <em>how fast they leave</em>. <strong>Role of care</strong> (1–4) is{' '}
