@@ -70,13 +70,13 @@ geometry never re-computes during a gesture.
 
 | Input | Result |
 |---|---|
-| tap item (< 8 px travel, < 600 ms) | select it |
-| tap empty paper | deselect; if nothing was selected, open **add here** at that point |
+| tap item (< 8 px travel, < 700 ms) | select it |
+| tap empty paper | deselect; if nothing was selected, open **add here** at that point. On the route sheet with a stop selected, open **add here** for a stop inserted after it |
 | drag from an item | move it (one undo step); snaps to 1 m, or 5 m with SNAP on |
 | drag from empty paper (1 finger / mouse) | pan |
 | two fingers | pinch-zoom about the midpoint + pan |
-| wheel / trackpad pinch | zoom about the cursor |
-| long-press empty paper | add here (same as tap when something is selected) |
+| wheel / trackpad pinch | zoom about the cursor; zoom stops at the limits without drifting |
+| buttons over the canvas (zoom, banners) | their own clicks; never a map tap |
 
 The SVG has `touch-action: none`; the overlay locks body scroll (`position: fixed` on
 `body` with the scroll offset restored on close — the iOS-safe pattern) and uses

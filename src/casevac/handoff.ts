@@ -38,9 +38,40 @@ const fromB64url = (s: string) => {
 const canCompress = () =>
   typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
 
+/** A plan without images is a few KB of JSON; anything far bigger isn't one of ours. */
+const MAX_PAYLOAD = 256 * 1024;
+const MAX_PLAN_BYTES = 1024 * 1024;
+
 async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream) {
   const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
   return new Uint8Array(await new Response(out).arrayBuffer());
+}
+
+/** Inflate, giving up past `max` bytes so a crafted link can't balloon in memory. */
+async function inflateLimited(bytes: Uint8Array, max: number): Promise<Uint8Array | null> {
+  const reader = new Blob([bytes as BlobPart])
+    .stream()
+    .pipeThrough(new DecompressionStream('deflate-raw'))
+    .getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) {
+      await reader.cancel();
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
 }
 
 /** A link that opens this app with the plan attached (images excluded). */
@@ -67,12 +98,15 @@ export function clearIncoming() {
 
 export async function decodePayload(payload: string): Promise<CasevacPlan | null> {
   try {
+    if (payload.length > MAX_PAYLOAD) return null;
     const kind = payload[0];
     const bytes = fromB64url(payload.slice(1));
     let text: string;
     if (kind === 'z') {
       if (!canCompress()) return null;
-      text = new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw')));
+      const raw = await inflateLimited(bytes, MAX_PLAN_BYTES);
+      if (!raw) return null;
+      text = new TextDecoder().decode(raw);
     } else if (kind === 'j') text = new TextDecoder().decode(bytes);
     else return null;
     return normalizePlan(JSON.parse(text));

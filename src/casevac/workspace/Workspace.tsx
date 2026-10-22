@@ -15,6 +15,7 @@ import {
   cameraBox,
   clampCamera,
   fitCamera,
+  limitZoom,
   worldToScreen,
   zoomAt,
   type Camera,
@@ -26,6 +27,8 @@ import { useGestures } from './useGestures';
 import type { SetOptions } from './useHistory';
 
 type Panel = 'peek' | 'half' | 'full';
+/** An ADD HERE point; `after` is the route stop a new stop is inserted after. */
+type Pending = { pos: Vec; after: string | null };
 const PANELS: Panel[] = ['peek', 'half', 'full'];
 
 export interface WorkspaceProps {
@@ -68,13 +71,19 @@ export default function Workspace(props: WorkspaceProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState<Size>({ w: 0, h: 0 });
-  const [camState, setCamState] = useState<{ sheet: SheetId; cam: Camera } | null>(null);
+  // `touched`: the user panned or zoomed, so edits and resizes no longer re-fit the view.
+  const [camState, setCamState] = useState<{
+    sheet: SheetId;
+    cam: Camera;
+    touched: boolean;
+  } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [pending, setPending] = useState<Vec | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [panel, setPanel] = useState<Panel>('peek');
   const [snap, setSnap] = useState(false);
   const [bgMode, setBgMode] = useState(false);
   const [frozen, setFrozen] = useState<ViewBox | null>(null);
+  const dragging = useRef(false);
 
   // ----- geometry (same functions the tab and the exports use) -----
   const hlzNorth = useMemo(() => northReferenceForGrid(plan.hlz.grid), [plan.hlz.grid]);
@@ -100,6 +109,8 @@ export default function Workspace(props: WorkspaceProps) {
   const view = frozen ?? liveView;
   const ctx: ItemCtx = { u: view.w / 100, hlzGeom, hlzNorth };
   const sheetBg = props.bg[sheet];
+  // Image-move mode only means something while the sheet has an image.
+  const moving = bgMode && !!sheetBg;
 
   // ----- camera -----
   const ready = size.w > 0 && size.h > 0;
@@ -118,9 +129,22 @@ export default function Workspace(props: WorkspaceProps) {
       : ready
         ? fitted()
         : { cx: 0, cy: 0, mpp: 1 };
-  const setCam = (c: Camera) => setCamState({ sheet, cam: clampCamera(c, view, size) });
-  const fit = () => setCamState({ sheet, cam: fitted() });
-  const zoomBy = (f: number) => setCam(zoomAt(cam, size, f, size.w / 2, size.h / 2));
+  const setCam = (c: Camera) =>
+    setCamState({ sheet, cam: clampCamera(c, view, size), touched: true });
+  const fit = () => setCamState({ sheet, cam: fitted(), touched: false });
+  const zoomBy = (f: number) =>
+    setCam(zoomAt(cam, size, limitZoom(cam, view, size, f), size.w / 2, size.h / 2));
+
+  // Pin the fitted view once per sheet (and on resize until the user pans or zooms), so an
+  // edit that grows the sketch's bounds doesn't rescale everything under the pointer.
+  // (State adjusted during render, React's pattern for reacting to a changed input.)
+  const fitKey = ready ? `${sheet}:${size.w}x${size.h}` : null;
+  const [fittedFor, setFittedFor] = useState<string | null>(null);
+  if (fitKey && fittedFor !== fitKey) {
+    setFittedFor(fitKey);
+    if (!(camState && camState.sheet === sheet && camState.touched))
+      setCamState({ sheet, cam: fitted(), touched: false });
+  }
 
   useEffect(() => {
     const el = canvasRef.current;
@@ -180,7 +204,7 @@ export default function Workspace(props: WorkspaceProps) {
   };
   const doAdd = (key: string) => {
     if (!pending) return;
-    const r = addItem(plan, sheet, key, pending, selected);
+    const r = addItem(plan, sheet, key, pending.pos, pending.after);
     set(() => r.plan);
     setPending(null);
     setSelected(r.id);
@@ -195,18 +219,22 @@ export default function Workspace(props: WorkspaceProps) {
     view,
     handlers: {
       hitTest: (t) =>
-        bgMode && sheetBg ? '__bg' : (t?.closest('[data-item]')?.getAttribute('data-item') ?? null),
+        moving ? '__bg' : (t?.closest('[data-item]')?.getAttribute('data-item') ?? null),
       canDrag: (id) => (id === '__bg' ? !!sheetBg : !!findItem(plan, sheet, id, ctx)?.canDrag),
       itemPos: (id) =>
         id === '__bg' ? (sheetBg?.offset ?? null) : (findItem(plan, sheet, id, ctx)?.pos ?? null),
       onTap: (id, w) => {
-        if (bgMode) return;
+        if (moving) return;
         if (id) return select(id);
-        if (selected || pending) return select(null);
-        setPending(snapPos(w));
+        // With a route stop selected, tapping the map adds the next stop after it.
+        const after = sheet === 'route' && selected?.startsWith('node:') ? selected : null;
+        if (pending || (selected && !after)) return select(null);
+        setSelected(null);
+        setPending({ pos: snapPos(w), after });
         if (narrow) setPanel('half');
       },
       onDragStart: (id) => {
+        dragging.current = true;
         if (id !== '__bg') {
           props.checkpoint();
           setSelected(id);
@@ -220,6 +248,7 @@ export default function Workspace(props: WorkspaceProps) {
         } else set((pl) => moveItem(pl, sheet, id, pos, ctx), { transient: true });
       },
       onDragEnd: (id, pos) => {
+        dragging.current = false;
         if (id === '__bg' && sheetBg) props.setSheetBg(sheet, { ...sheetBg, offset: pos }, true);
         setFrozen(null);
       },
@@ -244,15 +273,17 @@ export default function Workspace(props: WorkspaceProps) {
         } else L.props.onClose();
         return;
       }
+      // Undo / redo wait until a drag is finished, or the history would fork mid-move.
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault();
+        if (dragging.current) return;
         if (e.shiftKey) L.props.redo();
         else L.props.undo();
         return;
       }
       if (mod && e.key.toLowerCase() === 'y') {
         e.preventDefault();
-        L.props.redo();
+        if (!dragging.current) L.props.redo();
         return;
       }
       if (typing(e) || mod) return;
@@ -350,7 +381,7 @@ export default function Workspace(props: WorkspaceProps) {
       <div className="ws-body">
         <div
           ref={canvasRef}
-          className={`ws-canvas ${bgMode ? 'ws-canvas-bg' : ''}`}
+          className={`ws-canvas ${moving ? 'ws-canvas-bg' : ''}`}
           aria-label="Sketch canvas: pinch or scroll to zoom, drag empty ground to pan, tap to select"
         >
           {ready && (
@@ -365,7 +396,7 @@ export default function Workspace(props: WorkspaceProps) {
               showNorth={sheet !== 'route'}
               ariaLabel={`${sheet.toUpperCase()} sketch`}
               selection={selection}
-              marker={pending}
+              marker={pending?.pos ?? null}
               decoUnit={cam.mpp * 6}
               className="sketch-interactive"
             >
@@ -394,7 +425,7 @@ export default function Workspace(props: WorkspaceProps) {
               )}
             </SketchCanvas>
           )}
-          <div className="ws-zoom" role="group" aria-label="Zoom">
+          <div className="ws-zoom" role="group" aria-label="Zoom" data-overlay>
             <button
               type="button"
               className="icon-btn"
@@ -416,7 +447,7 @@ export default function Workspace(props: WorkspaceProps) {
             </button>
           </div>
           {sheet === 'route' && plan.route.layout === 'schematic' && (
-            <div className="ws-banner">
+            <div className="ws-banner" data-overlay>
               The export uses the schematic.{' '}
               <button
                 type="button"
@@ -427,7 +458,11 @@ export default function Workspace(props: WorkspaceProps) {
               </button>
             </div>
           )}
-          {bgMode && <div className="ws-banner">Drag anywhere to move the image.</div>}
+          {moving && (
+            <div className="ws-banner" data-overlay>
+              Drag anywhere to move the image.
+            </div>
+          )}
         </div>
 
         <aside className="ws-panel" aria-label="Inspector">
@@ -459,8 +494,11 @@ export default function Workspace(props: WorkspaceProps) {
               hlzNorth={hlzNorth}
               set={set}
               bg={sheetBg}
-              setBg={(b) => props.setSheetBg(sheet, b)}
-              bgMode={bgMode}
+              setBg={(b) => {
+                if (!b) setBgMode(false);
+                props.setSheetBg(sheet, b);
+              }}
+              bgMode={moving}
               setBgMode={setBgMode}
               snap={snap}
               setSnap={setSnap}

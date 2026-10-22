@@ -28,6 +28,14 @@ describe('decodePayload', () => {
     expect(got?.hlz.name).toBe('HLZ CROW');
   });
 
+  it('refuses oversized links and compression bombs', async () => {
+    expect(await decodePayload(`j${'A'.repeat(300 * 1024)}`)).toBeNull();
+    // ~6 MB of spaces deflates to a few KB; inflating stops at the 1 MB cap.
+    const bomb = await deflateRaw(new TextEncoder().encode(' '.repeat(6 * 1024 * 1024)));
+    expect(bomb.length).toBeLessThan(64 * 1024);
+    expect(await decodePayload(`z${b64url(bomb)}`)).toBeNull();
+  });
+
   it('returns null for junk instead of throwing', async () => {
     for (const p of [
       '',

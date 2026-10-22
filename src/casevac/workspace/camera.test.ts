@@ -4,6 +4,7 @@ import {
   cameraBox,
   clampCamera,
   fitCamera,
+  limitZoom,
   screenToWorld,
   worldToScreen,
   zoomAt,
@@ -41,6 +42,16 @@ describe('camera', () => {
     expect(z.mpp).toBeCloseTo(cam.mpp / 2.5);
     expect(after.x).toBeCloseTo(before.x);
     expect(after.y).toBeCloseTo(before.y);
+  });
+
+  it('stops zooming cleanly at the limits instead of drifting', () => {
+    const fit = fitCamera(view, size);
+    const atMax = { ...fit, mpp: MIN_MPP };
+    expect(limitZoom(atMax, view, size, 2)).toBeCloseTo(1); // no further in
+    const z = zoomAt(atMax, size, limitZoom(atMax, view, size, 2), 50, 60);
+    expect(z.cx).toBeCloseTo(atMax.cx);
+    expect(z.cy).toBeCloseTo(atMax.cy);
+    expect(limitZoom(fit, view, size, 0.001)).toBeCloseTo(0.25); // out to 4x the fit
   });
 
   it('clamps zoom and keeps the paper reachable', () => {

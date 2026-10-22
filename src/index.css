@@ -190,7 +190,7 @@ body {
 
 /* toast */
 .toast {
-  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 74px); z-index: 200;
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 74px); z-index: 500; /* above the sketch workspace (400) */
   transform: translate(-50%, -6px);
   max-width: min(86vw, 420px);
   background: var(--text-primary); color: var(--bg);

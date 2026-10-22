@@ -60,6 +60,16 @@ export const worldToScreen = (cam: Camera, size: Size, p: Vec): Vec => ({
   y: (cam.cy - p.y) / cam.mpp + size.h / 2,
 });
 
+/**
+ * The part of a zoom `factor` that stays inside the zoom limits, so zooming at a limit
+ * stops cleanly instead of panning the view (zoomAt re-centers for the scale it is given).
+ */
+export function limitZoom(cam: Camera, view: ViewBox, size: Size, factor: number): number {
+  const fit = fitCamera(view, size).mpp;
+  const mpp = Math.min(Math.max(cam.mpp / factor, MIN_MPP), fit * 4);
+  return cam.mpp / mpp;
+}
+
 /** Zoom by `factor` (>1 zooms in) keeping the world point under (sx, sy) fixed. */
 export function zoomAt(cam: Camera, size: Size, factor: number, sx: number, sy: number): Camera {
   const anchor = screenToWorld(cam, size, sx, sy);

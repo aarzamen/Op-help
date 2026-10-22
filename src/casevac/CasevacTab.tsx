@@ -84,6 +84,12 @@ export default function CasevacTab() {
     savePlan(plan);
   }, [plan]);
 
+  useEffect(() => {
+    const onHash = () => setIncoming(incomingPayload());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   const update: Update = (fn) => history.set(fn, { coalesce: 'form' });
 
   const hlzNorth = useMemo(() => northReferenceForGrid(plan.hlz.grid), [plan.hlz.grid]);
@@ -123,8 +129,15 @@ export default function CasevacTab() {
       }
       return;
     }
-    if (!safeSetItem(bgKey(s), JSON.stringify(value)))
+    if (!safeSetItem(bgKey(s), JSON.stringify(value))) {
+      // Don't leave the previous image in storage to reappear on the next load.
+      try {
+        localStorage.removeItem(bgKey(s));
+      } catch {
+        /* storage unavailable */
+      }
       notify('Image kept for this session only — too large to save', 'error');
+    }
   };
   const setSheetBg = (s: SheetId, value: Background | null, persist = true) => {
     setBg((prev) => ({ ...prev, [s]: value }));
@@ -207,9 +220,19 @@ export default function CasevacTab() {
     clearIncoming();
     setIncoming(null);
     if (!got) return notify("That link doesn't contain a readable plan", 'error');
-    if (!window.confirm('Replace the CASEVAC plan on this device with the one from the link?'))
+    // Links carry no images, and this device's images belong to the old plan's ground.
+    const sheetsWithImages = (Object.keys(bg) as SheetId[]).filter((s) => bg[s]);
+    const imagesNote = sheetsWithImages.length
+      ? ' Map images on this device will be removed (links carry no images; use SAVE FILE for those).'
+      : '';
+    if (
+      !window.confirm(
+        `Replace the CASEVAC plan on this device with the one from the link?${imagesNote}`
+      )
+    )
       return;
     history.reset(got);
+    sheetsWithImages.forEach((s) => setSheetBg(s, null));
     notify('Plan loaded from the link');
   };
 
