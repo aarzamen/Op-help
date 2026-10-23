@@ -111,6 +111,14 @@ const useDictation = (onResult: (text: string) => void) => {
       };
 
       recognitionRef.current = rec;
+      // Leaving the tab mid-dictation must turn the microphone off, not keep listening.
+      return () => {
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        rec.abort();
+        recognitionRef.current = null;
+      };
     }
   }, []);
 

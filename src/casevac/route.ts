@@ -24,14 +24,15 @@ export function routeTimeline(route: RouteSheet): RouteTimeline {
     cumKm,
     firstSurgical,
     toSurgicalMin,
-    urgentOk: toSurgicalMin === null ? null : toSurgicalMin <= 60,
+    // Judged on whole minutes, as displayed, so the verdict never contradicts the time shown.
+    urgentOk: toSurgicalMin === null ? null : Math.round(toSurgicalMin) <= 60,
   };
 }
 
-export const fmtMin = (m: number) =>
-  m >= 60
-    ? `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min`
-    : `${Math.round(m)} min`;
+export const fmtMin = (m: number) => {
+  const r = Math.round(m); // round first: 119.6 is "2 h 00 min", not "1 h 60 min"
+  return r >= 60 ? `${Math.floor(r / 60)} h ${String(r % 60).padStart(2, '0')} min` : `${r} min`;
+};
 
 /** Node-link schematic geometry, shared by the on-screen chain and the export sheet. */
 export function schematicGeom(n: number, vertical: boolean) {

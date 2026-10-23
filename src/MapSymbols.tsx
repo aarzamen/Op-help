@@ -115,6 +115,7 @@ export interface MapSymbol {
   Glyph: React.FC;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- the registry is part of the spec (docs/INTEGRATION_PROMPT.md)
 export const MAP_SYMBOLS: MapSymbol[] = [
   { key: "FriendlyUnit", name: "FRIENDLY (BN)", nomen: "maneuver unit", Glyph: FriendlyUnit },
   { key: "HostileUnit", name: "HOSTILE (BN)", nomen: "enemy unit", Glyph: HostileUnit },

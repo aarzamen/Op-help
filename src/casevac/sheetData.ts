@@ -185,19 +185,21 @@ export function nineLineScript(plan: CasevacPlan): string[] {
     n.wartime
       ? `LINE 6 — SECURITY AT PICKUP SITE: ${PHON[n.line6War]} (${LINE6[n.line6War]})`
       : `LINE 6 — WOUNDS / INJURIES / ILLNESS: ${n.line6Peace || '____'}`,
-    `LINE 7 — MARKING: ${PHON[n.line7]} (${LINE7[n.line7]}${n.line7Detail ? ` — ${n.line7Detail}` : ''})`,
+    `LINE 7 — MARKING: ${PHON[n.line7]} (${LINE7[n.line7]}${n.line7Detail && n.line7 !== 'D' ? ` — ${n.line7Detail}` : ''})`,
     `LINE 8 — NATIONALITY / STATUS: ${counted(n.line8, LINE8) || 'NONE ENTERED'}`,
     n.wartime
       ? `LINE 9 — CBRN CONTAMINATION: ${n.line9War ? `${PHON[n.line9War]} (${LINE9[n.line9War]})` : 'NONE — omit line'}`
       : `LINE 9 — TERRAIN AT PICKUP SITE: ${n.line9Peace || '____'}`,
     'OVER.',
   ];
-  n.mist.forEach((m, i) => {
-    if (!(m.m || m.i || m.s || m.t || m.zap)) return;
-    out.push(
-      `MIST ${i + 1}${m.zap ? ` (${m.zap})` : ''} — M: ${m.m || '—'} · I: ${m.i || '—'} · S: ${m.s || '—'} · T: ${m.t || '—'}`
-    );
-  });
+  // Number only the cards read aloud, so a blank card doesn't leave a gap ("MIST 2" alone).
+  n.mist
+    .filter((m) => m.m || m.i || m.s || m.t || m.zap)
+    .forEach((m, i) => {
+      out.push(
+        `MIST ${i + 1}${m.zap ? ` (${m.zap})` : ''} — M: ${m.m || '—'} · I: ${m.i || '—'} · S: ${m.s || '—'} · T: ${m.t || '—'}`
+      );
+    });
   return out;
 }
 

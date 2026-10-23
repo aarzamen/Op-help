@@ -100,7 +100,6 @@ export const HlzLayer = ({
       add(mul(dir, to), mul(side, half)),
       add(mul(dir, to), mul(side, -half)),
     ]);
-  const half = g.W / 2 + g.D / 4;
   const approachLen = Math.hypot(g.approachFrom.x, g.approachFrom.y);
   const departLen = Math.hypot(g.departureTo.x, g.departureTo.y);
   const topY = Math.max(...g.corners.map((c) => c.y));
@@ -132,7 +131,7 @@ export const HlzLayer = ({
     <g>
       {/* approach / departure corridors used by the 10:1 check */}
       <polygon
-        points={corridor(g.uA, g.uP, -g.L / 2, -approachLen, half)}
+        points={corridor(g.uA, g.uP, -g.L / 2, -approachLen, g.halfA)}
         style={{ fill: P.friendly, fillOpacity: 0.05 }}
       />
       <polygon
@@ -141,7 +140,7 @@ export const HlzLayer = ({
           unit(g.departureAz + 90),
           Math.max(...g.corners.map((c) => c.x * g.uD.x + c.y * g.uD.y)),
           departLen,
-          half
+          g.halfD
         )}
         style={{ fill: P.departure, fillOpacity: 0.05 }}
       />

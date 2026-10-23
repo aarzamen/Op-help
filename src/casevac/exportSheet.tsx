@@ -142,10 +142,19 @@ function renderToMarkup(el: React.ReactElement): string {
   const host = document.createElement('div');
   const root = createRoot(host);
   flushSync(() => root.render(el));
-  const html = host.innerHTML;
+  // XMLSerializer, not innerHTML: HTML serialization writes U+00A0 as `&nbsp;`, which isn't an
+  // XML entity, so a pasted non-breaking space made the SVG image (and the export) fail.
+  const svg = host.firstElementChild;
+  const markup = svg ? new XMLSerializer().serializeToString(svg) : host.innerHTML;
   root.unmount();
-  return html;
+  return markup;
 }
+
+/** Lone UTF-16 surrogates (an emoji cut by a label clip) make encodeURIComponent throw. */
+const wellFormed = (s: string) =>
+  s.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, (c) =>
+    c.length === 2 ? c : '\uFFFD'
+  );
 
 let fontCssCache: string | null = null;
 
@@ -186,7 +195,7 @@ async function svgToPng(markup: string, scale = 2): Promise<string> {
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = () => reject(new Error('Sketch render failed'));
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(wellFormed(markup))}`;
   });
   const canvas = document.createElement('canvas');
   canvas.width = W * scale;
