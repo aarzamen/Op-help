@@ -1,0 +1,97 @@
+/* Named plans use the reference palette; paragraph colors retain their meaning. */
+.plan-switcher {
+  max-width: var(--content-w);
+  margin: 6px auto 0;
+}
+.plan-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-primary);
+  font: 600 11px var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+.plan-trigger > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-trigger-action {
+  margin-left: auto;
+  color: var(--c-ref);
+  font-size: 10px;
+}
+.plans-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: var(--shadow-heavy);
+}
+.plans-dialog {
+  width: min(100%, 620px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: 0 10px 40px var(--shadow-heavy);
+}
+.plans-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.plans-heading h2 {
+  margin: 0;
+  font: 800 15px var(--mono);
+}
+.plans-section {
+  border-top: 1px solid var(--border-light);
+  margin-top: 16px;
+  padding-top: 14px;
+}
+.plans-section h3 {
+  margin: 0 0 8px;
+  font: 700 11px var(--mono);
+  color: var(--c-ref);
+}
+.plans-row {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  margin-top: 12px;
+}
+.plans-row .field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.plans-row > button {
+  flex-shrink: 0;
+  margin-bottom: 1px;
+  min-height: 42px;
+}
+.plans-error {
+  padding: 10px;
+  border-left: 3px solid var(--bad-ink);
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+  font-size: 13px;
+}
+.plans-destructive {
+  color: var(--bad-ink);
+}
