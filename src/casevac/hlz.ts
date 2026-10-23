@@ -57,6 +57,9 @@ export interface HlzGeom {
   uD: Vec;
   lps: Vec[]; // LP1 (lead) first
   corners: Vec[];
+  /** Corridor half-widths (m): the zone's footprint across each path plus a quarter disc. */
+  halfA: number;
+  halfD: number;
   approachFrom: Vec;
   approachTo: Vec;
   departureFrom: Vec;
@@ -114,14 +117,20 @@ export function computeHlz(hlz: HlzSheet, north: NorthReference | null, ccpGrid:
   const rear = lps.reduce((a, b) => (dot(b, uA) < dot(a, uA) ? b : a));
   const front = lps.reduce((a, b) => (dot(b, uD) > dot(a, uD) ? b : a));
   const uDp = unit(departureAz + 90);
-  const halfCorridor = W / 2 + D / 4;
+  // Each corridor spans the zone's footprint across its path (+ a quarter disc), so a
+  // departure that turns away from a trail formation still covers every landing point.
+  const across = (side: Vec) => Math.max(...corners.map((c) => Math.abs(dot(c, side)))) + D / 4;
+  const halfA = across(uP); // = W / 2 + D / 4
+  const halfD = across(uDp);
   const checks: ObstacleCheck[] = hlz.obstacles.map((o) => {
     const relA = sub(o.pos, rear);
     const alongA = -dot(relA, uA);
-    const inA = alongA > 0 && Math.abs(dot(relA, uP)) <= halfCorridor;
+    // Lateral offset from the zone's center line, the same corridor HlzLayer draws (not from
+    // one landing point, which shifts the lane in an abreast formation or a turning departure).
+    const inA = alongA > 0 && Math.abs(dot(o.pos, uP)) <= halfA;
     const relD = sub(o.pos, front);
     const alongD = dot(relD, uD);
-    const inD = alongD > 0 && Math.abs(dot(relD, uDp)) <= halfCorridor;
+    const inD = alongD > 0 && Math.abs(dot(o.pos, uDp)) <= halfD;
     const required = OBSTACLE_RATIO * Math.max(0, o.heightM);
     if (!inA && !inD) return { id: o.id, path: null, along: 0, required, ok: null };
     const useA = inA && (!inD || alongA <= alongD);
@@ -164,6 +173,8 @@ export function computeHlz(hlz: HlzSheet, north: NorthReference | null, ccpGrid:
     uD,
     lps,
     corners,
+    halfA,
+    halfD,
     approachFrom,
     approachTo,
     departureFrom,

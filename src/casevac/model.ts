@@ -476,7 +476,7 @@ export function defaultNineLine(): NineLine {
     line6War: 'P',
     line6Peace: '',
     line7: 'C',
-    line7Detail: 'violet',
+    line7Detail: '', // the pilot identifies the smoke color; don't announce it first
     line8: { A: 2, B: 0, C: 0, D: 0, E: 0 },
     line9War: '',
     line9Peace: '',
@@ -739,6 +739,9 @@ export function loadPlan(): CasevacPlan {
 
 export const savePlan = (plan: CasevacPlan) => safeSetItem(CASEVAC_KEY, JSON.stringify(plan));
 
+/** Widest ground an overlay image may cover (the editor caps the field at the same value). */
+export const BG_MAX_WIDTH_M = 400_000;
+
 /** A background is only trusted if it is an inline image with sane numbers. */
 export function normalizeBackground(raw: unknown): Background | null {
   if (!isObj(raw)) return null;
@@ -750,15 +753,15 @@ export function normalizeBackground(raw: unknown): Background | null {
     bg.aspect > 0 &&
     bg.aspect < 100 &&
     typeof bg.widthM === 'number' &&
+    Number.isFinite(bg.widthM) &&
     bg.widthM > 0 &&
-    bg.widthM <= 2 * COORD_MAX &&
     isVec(bg.offset) &&
     Number.isFinite(bg.opacity);
   if (!ok) return null;
   return {
     dataUrl: bg.dataUrl as string,
     aspect: bg.aspect as number,
-    widthM: bg.widthM as number,
+    widthM: clamp(bg.widthM as number, 10, BG_MAX_WIDTH_M),
     offset: vec(bg.offset, { x: 0, y: 0 }),
     opacity: clamp(bg.opacity as number, 0, 1),
   };
