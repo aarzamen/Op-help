@@ -8,6 +8,7 @@ export {
   copyText,
   notify,
   readJson,
+  removeItem,
   safeSetItem,
   useLocalStorage,
 } from '../lib/storage';

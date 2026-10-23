@@ -20,6 +20,7 @@ import OrderView from './views/OrderView';
 import CasevacView from './casevac/CasevacTab';
 import { incomingPayload } from './casevac/handoff';
 import ToolsView from './views/ToolsView';
+import OperationManager from './components/OperationManager';
 
 export type ViewId = 'guide' | 'analyze' | 'order' | 'casevac' | 'tools';
 
@@ -174,6 +175,7 @@ export default function App() {
             </button>
           </div>
         </div>
+        <OperationManager />
         <nav className="top-nav" aria-label="Sections">
           <NavButtons view={view} onGo={go} />
         </nav>
