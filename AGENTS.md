@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Guidance for coding agents (Codex, Claude Code, others) and people working in this repo.
-`CLAUDE.md` just imports this file. Start with **Handoff — where things stand** at the end.
+`CLAUDE.md` just imports this file. Current state, open PRs and next steps: `HANDOFF.md`.
 
 ## What this is
 
@@ -199,6 +199,10 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
   create and update that file; commit it so later deploys reuse the same site. Every Sites
   deploy URL is production: save a version, check it, then deploy. The app needs none of
   the Sites storage features (D1/R2) — all data stays in the visitor's browser.
+- **Deploy only from `main`.** Merge first, then build and deploy. After a deploy, check
+  that the live `index.html` asset names match a local `npm run build` of `main`. A deploy
+  from a local or PR branch leaves production ahead of the repo (this happened in October
+  2026; see `HANDOFF.md`).
 
 ---
 
