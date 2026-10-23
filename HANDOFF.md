@@ -109,7 +109,7 @@ redeployed from `main`, and its asset names match a local build of `main`.
 
 ## Session log
 
-- 2026-10-23: wrap; fixed 11 review findings (10:1 corridors, export with pasted text,
+- 2026-10-23: wrap; fixed 10 review findings (10:1 corridors, export with pasted text,
   dictation mic, route totals, 9-line, Letter PDFs); verified `main`, live site,
   fresh clone and the merged release candidate; deferred M1 merges and M2 device pass.
 - 2026-10-22: merged #6 to #10: CASEVAC planner, GUIDE, sketch editor, device handoff,
