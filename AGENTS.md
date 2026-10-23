@@ -340,8 +340,8 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
 **Candidates (proposed, not built)**
 - [ ] **Terrain-model kit printout** — labels for every control measure / unit marker
       plus the board (grids, astro data, challenge & pass, timeline), from the order.
-- [ ] **Publish on ChatGPT Sites** so a classmate can open it on a phone with no setup
-      (the build is ready: see *Hosting & deploy*).
+- [x] **Publish on ChatGPT Sites** — live at
+      [OPORD Analyst](https://op-help.annonable.chatgpt.site) (see *Hosting & deploy*).
 - [ ] **Practice mode** — glossary / task-verb flashcards and "find the implied task"
       drills from the worked examples.
 - [ ] **Brief timer** — per-section timing for rehearsals against the 30–60 min window.
@@ -365,11 +365,11 @@ the course ends in a group-of-four terrain-model brief graded on the checklist i
 
 **Next, in order:**
 
-1. **Publish on ChatGPT Sites.** `npm ci && npm run typecheck && npm run lint && npm test
-   && npm run build`; confirm `dist/` deploys as a static site (see *Hosting & deploy*);
-   save a version and check it on a phone before deploying: open each tab, EDIT SKETCH on
-   CASEVAC (drag, pinch, DONE), PACKET PDF, then reload in airplane mode. Commit
-   `.openai/hosting.json`.
+1. [x] **Publish on ChatGPT Sites — done.** Live:
+   [OPORD Analyst](https://op-help.annonable.chatgpt.site). The original
+   `.openai/hosting.json` is committed with the existing project ID and `dist/` static
+   output setting so future deploys reuse the same site. The real iPhone/iPad pass
+   remains step 2.
 2. **Real-device pass on iPhone and iPad** — headless Chromium can't prove these: workspace
    gestures, bottom sheet and safe areas; compass permission prompt; dictation; PDF / PNG
    download and the share sheet; Add to Home Screen and offline; SEND LINK from phone →
