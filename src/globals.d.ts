@@ -26,6 +26,7 @@ interface SpeechRecognitionCtor {
     onend: (() => void) | null;
     start: () => void;
     stop: () => void;
+    abort: () => void;
   };
 }
 

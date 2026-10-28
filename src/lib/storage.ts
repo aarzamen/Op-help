@@ -153,7 +153,7 @@ export function useLocalStorage<T>(
       // silently dropping the write (same hardening as InlineNotes/NotesBlock).
       safeSetItem(key, JSON.stringify(valueToStore));
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
 

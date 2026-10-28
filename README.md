@@ -1,85 +1,127 @@
 # OPORD Analyst (`Op-help`)
 
 A mobile-first reference, worksheet and briefing aid for writing and briefing a
-**five-paragraph order** (Orientation + SMEAC), built around how the EULC "Issue a Combat
-Order" course teaches and grades it — written so that someone with **no tactical
-background** can follow it end to end. It adds **METT-T** mission analysis, a **CASEVAC
-planner** that draws HLZ, CCP and evacuation-route sketches, and a tactical-reference tab.
+five-paragraph order (Orientation + SMEAC) the way the EULC "Issue a Combat Order" course
+teaches and grades it, written so someone with no tactical background (a clinician in the
+course, for example) can follow it end to end. It adds METT-T mission analysis, a CASEVAC
+planner that draws HLZ, CCP and evacuation-route sketches, and a tactical reference. It is
+a client-only React app built to a static site: it runs in any modern phone, tablet or
+desktop browser, keeps all data in that browser, works offline after one visit, and is
+hosted on ChatGPT Sites at <https://op-help.annonable.chatgpt.site>.
 
-It is a **client-only React SPA** built as a static site — all user data lives in the
-browser via `localStorage`; there is no backend and no third-party API calls. After one
-online visit it works **offline**, and it can be installed to a phone's home screen.
+**Status:** FAR, 2026-10-23. The live site works, but GitHub `main` is behind it: the
+live build includes Codex PRs #12 to #14, which are still open. Current milestone: `main`
+matches the live site. See `HANDOFF.md`.
 
-## The five tabs
+## Capabilities
 
-| Tab | Use it to… |
-|---|---|
-| **GUIDE** | Learn the method on one page: the 5-step flow, the graded checklist as a rehearsal tracker (assign sections to briefers, tick items off, see points covered), taking apart higher's order (specified / implied / essential tasks), the writing formulas, task verbs, the terrain-model brief, a clinical-to-tactical translation table, and a searchable glossary. |
-| **ANALYZE** | Work METT-T on higher's order, with the course's rules and labeled examples. |
-| **ORDER** | Write your order: Orientation, ¶1–¶5 and the time hack. Every block lists what the grading sheet checks (with points); TEMPLATE drops the expected outline into the notes; a builder writes tasking statements in the course format. |
-| **CASEVAC** | Plan casualty evacuation: an HLZ overhead sketch (LP sizes, approach/departure corridors, the 10:1 obstacle check, wind), a CCP layout (one-way flow, triage areas), the evacuation route with T+ times and the 1-hour POI→surgical check, a prepared 9-line with MIST, and the graded ¶4.a paragraph (one tap inserts it into the order). **EDIT SKETCH** opens a full-screen workspace that holds still while you work: tap a marker for its options, drag it, pinch to zoom, tap empty ground to add one, undo/redo; type an exact grid on a bigger screen. Overlay a map screenshot or a photo of the terrain model. **SEND LINK / SAVE FILE** moves the plan to another device (start on a phone, finish on an iPad or computer). Export PNGs or a packet PDF. |
-| **TOOLS** | PCC/PCI checklists (editable), order types, tactical control measures, and a NATO/APP-6 map-symbols appendix. |
+"Verified" means it was exercised in a browser or test on 2026-10-23 (headless Chromium at
+phone, small-phone and desktop sizes, light and blackout). No real iPhone or iPad has been
+tested yet.
 
-Also: a live **compass** with grid (**G**) and magnetic (**M**) arrows using the real G-M
-angle for your location (WMM declination − UTM grid convergence), **GET GRID** (GPS →
-MGRS into your notes), **dictation** into any note, **blackout mode** (red-on-black,
-including the sketches), and **copy / PDF export** of every tab.
+- GUIDE, ANALYZE, ORDER, CASEVAC and TOOLS tabs render without errors: verified
+- GUIDE: method, graded-checklist rehearsal tracker, worked examples, task verbs, glossary: renders verified; tracker ticking not exercised
+- ORDER: Orientation and paragraphs 1 to 5 with the grading points, TEMPLATE, tasking-statement builder: verified
+- GET GRID (GPS to MGRS into a note): verified with emulated geolocation
+- INSERT INTO ORDER (CASEVAC paragraph 4.a into the ORDER tab): verified
+- PDF export of every tab on US Letter, copy as text: verified
+- CASEVAC HLZ, CCP and route sketches with the 10:1 obstacle check, wind, and the 1-hour POI to surgical check: verified (plus unit tests)
+- CASEVAC sketch editor: tap to select, drag, pinch and wheel zoom, add, delete, undo and redo, typed grids, arrow-key nudges: verified
+- CASEVAC 9-line read-aloud script with MIST, and the graded paragraph 4.a: verified (unit tests)
+- CASEVAC exports: PNG per sheet and the packet PDF, including pasted non-breaking spaces: verified
+- Moving a plan between devices: SEND LINK (plan in the URL fragment) and SAVE FILE / OPEN FILE: verified
+- Offline use and home-screen install (service worker, manifest), served from a subpath: verified
+- Live site: all five tabs, the sketch editor, offline reload and PDF export: verified against <https://op-help.annonable.chatgpt.site>
+- Blackout (red-on-black) mode across the app and sketches: verified
+- Live compass with grid and magnetic arrows (real G-M angle): unverified this session (needs device sensors)
+- Dictation into notes: unverified this session (only the microphone release on tab change was checked, with a fake recognizer)
+- PCC/PCI checklist editing: renders verified; editing not exercised
+- Named plans, backup and restore, and data wipe: on the live site from open PRs #13 and #14; not on `main`; not exercised by this wrap
 
-Colors mean something: every tile takes the color of the part of the order it feeds
-(orientation brown, situation navy, mission red, execution green, admin & logistics —
-including all of CASEVAC — amber, command & signal purple, reference slate). See
-`docs/DESIGN-SYSTEM.md`.
+## Install
 
-## Tech stack
-
-React 19 + TypeScript, built with Vite 6. Tailwind CSS v4, `lucide-react`, `jspdf`
-(PDF), `mgrs` (grid), `geomagnetism` (WMM declination), self-hosted `@fontsource` fonts.
-
-## Run locally
-
-**Prerequisites:** Node.js
+Needs Node.js 20 or newer and git. Tested from a fresh clone on 2026-10-23 (install took
+about 10 seconds with a warm npm cache):
 
 ```bash
-npm install        # install dependencies
-npm run dev        # Vite dev server on :3000
-npm run build      # production build to dist/
-npm run preview    # preview the production build
-npm run typecheck  # tsc --noEmit
-npm run lint       # eslint .
-npm test           # unit tests (Vitest)
-npm run format     # prettier --write .
+git clone https://github.com/aarzamen/Op-help
+cd Op-help
+npm install
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests and build on every PR.
+## Run
 
-## Deploy
+```bash
+npm run dev        # http://localhost:3000
+```
 
-`npm ci && npm run build`, then publish `dist/` on any static host (the target is
-ChatGPT Sites; GitHub Pages, Cloudflare Pages and Netlify work too). Asset paths are
-relative, so it can live at a domain root or a subpath; it needs no server, environment
-variables or rewrite rules. Serve it over HTTPS so the offline service worker, compass
-and GPS work. Details in `AGENTS.md` → *Hosting & deploy*.
+Other commands: `npm run build` (static site to `dist/`), `npm run preview` (serve the
+build on :4173), `npm test` (unit tests), `npm run typecheck`, `npm run lint`. CI runs
+typecheck, lint, tests and build on every PR and on `main`.
 
-## Project layout & roadmap
+To publish: `npm ci && npm run build`, then upload `dist/` to any static host over HTTPS.
+Asset paths are relative, so a domain root or a subpath both work, with no rewrites. The
+ChatGPT Sites project is recorded in `.openai/hosting.json`. Deploy only from `main`.
 
-- `src/App.tsx` — app shell (header, navigation, view switch).
-- `src/views/` — one file per tab; `src/components/` — shared UI (accordions, notes,
-  forms, compass, checklists, tasking builder, guide widgets).
-- `src/content/` — doctrinal content as data (grading rubric, note templates, task verbs,
-  glossary); `src/lib/` — storage, export helpers, time formatting.
-- `src/casevac/` — the CASEVAC planner: geometry (`geo`, `hlz`, `ccp`, `route`), SVG
-  layers, forms, the full-screen sketch workspace (`workspace/`), device handoff
-  (`handoff.ts`) and the PNG/PDF sheet exporter. It reaches the rest of the app only
-  through `casevac/host.ts`, so it can be split out later.
-- `src/export/exporters.ts` — copy-as-text and PDF for every tab.
-- `AGENTS.md` — contributor / agent guide: conventions, storage keys, hosting, the
-  prioritized to-dos and the current handoff notes (`CLAUDE.md` imports it).
-- `tools/` — the build-time service-worker plugin (`serviceWorker.ts`) and worker (`sw.js`).
-- `docs/SPEC-framework-hardening.md` — Milestones B–E (implementable specs).
-- `docs/SPEC-dictation-apple-asr.md` — provider-agnostic dictation + optional Apple ASR.
-- `docs/SPEC-casevac-workspace.md` — the sketch workspace, handoff and print weights.
-- `docs/DESIGN-SYSTEM.md` — what each color means and the icon rules.
+## Layout
 
-> ⚠️ **OPSEC:** operational content is stored **unencrypted** in the browser. Review the
-> handling notes in `AGENTS.md` before any real-world use. The CASEVAC sheets are
-> planning aids — verify grids, headings and LP sizes with aviation and your SOP.
+```
+index.html, public/        entry page, icons, web app manifest
+src/main.tsx, src/App.tsx  React root, service-worker registration, app shell and nav
+src/views/                 GUIDE, ANALYZE, ORDER and TOOLS tabs
+src/casevac/               CASEVAC planner (own module; reaches the app only via host.ts)
+  workspace/               full-screen sketch editor (camera, gestures, items, inspector)
+src/components/            shared UI: accordions, notes and dictation, forms, compass, icons
+src/content/               doctrine as data: grading rubric, templates, task verbs, glossary
+src/lib/, src/export/      storage helpers, checklists, PDF-safe text, exporters
+tools/                     build plugin that writes dist/sw.js, and the service worker
+docs/                      specs and DESIGN-SYSTEM.md (what each color means)
+AGENTS.md, CLAUDE.md       rules for coding agents (CLAUDE.md imports AGENTS.md)
+HANDOFF.md                 current state and next steps
+```
+
+## Architecture
+
+Everything runs in the visitor's browser. Nothing is sent to a server: the host only
+serves static files, and a CASEVAC link carries the plan in the URL fragment, which
+browsers never send.
+
+```mermaid
+flowchart LR
+  Host["Static host (ChatGPT Sites)"] -->|"dist/ files"| SW["Service worker cache"]
+  SW --> App["React app: 5 tabs"]
+  App <-->|"notes, plans, checklists"| LS[("localStorage")]
+  App --> Exp["PDF / PNG / text export"]
+  App --> WS["CASEVAC sketch editor"]
+  WS <--> LS
+  App <-->|"#cv= link or JSON file"| Dev["Another device"]
+```
+
+## Configuration
+
+None. There are no environment variables, API keys or server settings. The only hosting
+file is `.openai/hosting.json` (the Sites project id; no secrets).
+
+## Known issues
+
+- GitHub `main` is behind the live site: open PRs #12 (offline fix for hosts that send
+  `Vary: Origin`, likely needed on iPhone Safari), #13 (named plans and backup) and #14
+  (data wipe) are deployed but unmerged. Do not redeploy from `main` until they merge.
+- Not yet tested on a real iPhone or iPad.
+- OPSEC: operational text is stored unencrypted in the browser. A typed-confirmation wipe
+  exists in open PR #14; there is no encryption.
+- On Android, the compass may mix relative and absolute orientation readings and drift.
+- `npm audit` reports issues in build tools and in DOMPurify (pulled in by jsPDF for an
+  HTML-to-PDF path this app does not use).
+- On phones, the CCP and route sketches open small; pinch to zoom.
+- Dragging the overlay opacity slider rewrites the stored image on every step, which can
+  stutter on phones.
+
+## Next steps
+
+See `HANDOFF.md`.
+
+## Attribution
+
+Built with Claude Code, directed by Mike Arzamendi. Publishing to ChatGPT Sites and PRs
+#11 to #17 were done with Codex.

@@ -77,9 +77,14 @@ async function inflateLimited(bytes: Uint8Array, max: number): Promise<Uint8Arra
 /** A link that opens this app with the plan attached (images excluded). */
 export async function planLink(plan: CasevacPlan): Promise<string> {
   const json = new TextEncoder().encode(JSON.stringify(plan));
-  const payload = canCompress()
-    ? `z${toB64url(await pipe(json, new CompressionStream('deflate-raw')))}`
-    : `j${toB64url(json)}`;
+  let payload = `j${toB64url(json)}`;
+  if (canCompress()) {
+    try {
+      payload = `z${toB64url(await pipe(json, new CompressionStream('deflate-raw')))}`;
+    } catch {
+      // Older engines have CompressionStream but not 'deflate-raw': send it uncompressed.
+    }
+  }
   const url = new URL(window.location.href);
   url.hash = KEY + payload;
   return url.toString();

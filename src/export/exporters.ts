@@ -207,7 +207,7 @@ export function exportText(view: ViewId): string {
 async function docPdf(d: Doc, fileName: string) {
   // Loaded on first export so the PDF library isn't part of the app's startup download.
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF();
+  const doc = new jsPDF({ format: 'letter' }); // US Letter, like the CASEVAC packet
   const margin = 20;
   const pageW = doc.internal.pageSize.width;
   const pageH = doc.internal.pageSize.height;

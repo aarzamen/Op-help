@@ -4,6 +4,7 @@ import { NumberField, Segmented, SelectField, StatusIcon, TextField } from '../h
 import { eastWest, len, norm360, pad3, azimuth, type NorthReference, type Vec } from '../geo';
 import type { HlzGeom } from '../hlz';
 import {
+  BG_MAX_WIDTH_M,
   LEG_MODES,
   LP_SIZES,
   NODE_KINDS,
@@ -292,7 +293,10 @@ export function Inspector(p: InspectorProps) {
                   min={1}
                   onChange={(v) =>
                     set(
-                      (pl) => ({ ...pl, hlz: { ...pl.hlz, lpCount: Math.max(1, Math.min(8, v)) } }),
+                      (pl) => ({
+                        ...pl,
+                        hlz: { ...pl.hlz, lpCount: Math.max(1, Math.min(8, Math.round(v))) },
+                      }),
                       key('n')
                     )
                   }
@@ -544,7 +548,9 @@ function SheetPanel(p: InspectorProps) {
               value={bg.widthM}
               min={10}
               step={10}
-              onChange={(v) => p.setBg({ ...bg, widthM: Math.max(10, v) })}
+              onChange={(v) =>
+                p.setBg({ ...bg, widthM: Math.min(BG_MAX_WIDTH_M, Math.max(10, v)) })
+              }
             />
             <label className="field">
               <span className="field-label">Opacity</span>

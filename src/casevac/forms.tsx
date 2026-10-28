@@ -53,6 +53,7 @@ import {
 } from './model';
 import { fmtMin, type RouteTimeline } from './route';
 import { casevacParagraph, grid8, nineLineScript } from './sheetData';
+import { deleteItem } from './workspace/items';
 
 export type Update = (fn: (p: CasevacPlan) => CasevacPlan) => void;
 
@@ -150,8 +151,8 @@ export const HlzForm = ({
             label="Landing points"
             value={h.lpCount}
             min={1}
-            max={6}
-            onChange={(v) => set({ lpCount: Math.max(1, Math.min(6, Math.round(v))) })}
+            max={8}
+            onChange={(v) => set({ lpCount: Math.max(1, Math.min(8, Math.round(v))) })}
           />
           <NumberField
             label="Spacing (center–center)"
@@ -675,15 +676,14 @@ export const RouteForm = ({
       pos: { x: at.pos.x + 60, y: at.pos.y },
     });
     const legs = [...r.legs];
-    legs.splice(i, 0, { mode: 'ground', distKm: 1, timeMin: 5, route: '', net: '', platform: '' });
+    // 0 km / 0 min, like the sketch editor, so adding a stop never changes the chain's totals.
+    legs.splice(i, 0, { mode: 'ground', distKm: 0, timeMin: 0, route: '', net: '', platform: '' });
     set({ nodes, legs });
   };
   const remove = (i: number) => {
     if (r.nodes.length <= 2) return notify('Keep at least two nodes', 'error');
-    const nodes = r.nodes.filter((_, k) => k !== i);
-    const legs = [...r.legs];
-    legs.splice(Math.min(i, legs.length - 1), 1);
-    set({ nodes, legs });
+    // Same edit as the sketch editor: the legs on either side merge, so totals hold.
+    update((p) => deleteItem(p, 'route', `node:${r.nodes[i].id}`));
   };
   const move = (i: number, d: -1 | 1) => {
     const j = i + d;
