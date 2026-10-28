@@ -10,6 +10,8 @@
   iOS and Android cut their own rounded shape, so these must not be pre-rounded.
 - icon-192.png, icon-512.png, favicon.png: rounded corners on a transparent background,
   for browser tabs and desktop installs, which show the image as it is.
+- iOS app (ios/App/App/Assets.xcassets): the 1024 px App Store-size icon, square and opaque,
+  and the launch screen: the rounded icon centered on the page color.
 """
 
 from pathlib import Path
@@ -19,6 +21,8 @@ from PIL import Image, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "design" / "app-icon-source.png"
 OUT = ROOT / "public"
+IOS = ROOT / "ios" / "App" / "App" / "Assets.xcassets"
+PAGE = (0xF2, 0xF0, 0xEB)  # --bg in src/index.css, so the launch screen fades into the app
 RADIUS = 0.2237  # corner radius as a share of the side, close to Apple's icon shape
 
 
@@ -60,6 +64,14 @@ def main() -> None:
     rounded(img, 192).save(OUT / "icon-192.png", optimize=True)
     rounded(img, 512).save(OUT / "icon-512.png", optimize=True)
     rounded(img, 64).save(OUT / "favicon.png", optimize=True)
+    if IOS.is_dir():
+        square(img, 1024).save(IOS / "AppIcon.appiconset" / "AppIcon-512@2x.png", optimize=True)
+        splash = Image.new("RGB", (2732, 2732), PAGE)
+        mark = rounded(img, 520)
+        splash.paste(mark, ((2732 - 520) // 2, (2732 - 520) // 2), mark)
+        for name in ("splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"):
+            splash.save(IOS / "Splash.imageset" / name, optimize=True)
+        print("wrote the iOS app icon and launch screen")
     print("wrote", ", ".join(p.name for p in sorted(OUT.glob("*.png"))))
 
 

@@ -50,6 +50,7 @@ npm run typecheck  # tsc --noEmit (type-check)
 npm run lint       # eslint .
 npm test           # vitest run (unit tests, src/**/*.test.ts)
 npm run format     # prettier --write .
+scripts/ios-device.sh  # iOS app: build, sign, install and launch on a connected iPhone
 ```
 
 CI (`.github/workflows/ci.yml`, Node 20) runs `npm ci`, `typecheck`, `lint`, `test` and
@@ -67,6 +68,10 @@ index.html                 # entry; /src/main.tsx; favicon, manifest, apple-touc
 public/                    # icons (generated: `uv run tools/make-icons.py` from design/app-icon-source.png), manifest
 tools/serviceWorker.ts     # Vite plugin: emits dist/sw.js (tools/sw.js + the precache list)
 tools/sw.js                # the service worker (offline after one online visit)
+tools/make-icons.py        # every icon size + the iOS app icon and launch screen (uv run)
+capacitor.config.ts, ios/  # iOS app: Capacitor shell around the same build (see Hosting & deploy)
+scripts/ios-device.sh      # build + install the iOS app on a connected iPhone
+src/lib/native.ts          # the only place web and iOS app differ (files, share, clipboard, status bar)
 src/main.tsx               # React root; ErrorBoundary, @fontsource imports, SW registration (prod)
 src/App.tsx                # shell only: header (clock, compass, blackout, PDF, copy), nav, view switch, toast
 src/views/                 # one file per tab (Guide, Analyze, Order, Tools); CASEVAC lives in src/casevac/
@@ -194,6 +199,20 @@ docs/                      # specs: map-symbols, dictation/ASR, hardening (B–E
   separate from Safari's, and a CASEVAC link opens in Safari. Use SAVE FILE / OPEN FILE to
   move a plan into the installed app. Compass and dictation prompt for permission on first
   use; both need the site opened directly (not inside an iframe).
+- **iOS app (Capacitor, `ios/`).** The same `dist/` build bundled into a native shell
+  (bundle ID `com.aarzamen.opord`), so it works offline from the first launch with no
+  service worker. Everything that differs from the website is in `src/lib/native.ts`,
+  behind `isNativeApp()`: files (PDF, PNG, plan, backup) go to the iOS share sheet,
+  SEND LINK points at the public website, copy uses the native clipboard, and the status
+  bar follows blackout. DICTATE uses on-device Apple Speech through
+  `ios/App/App/OPORDSpeechBridge.swift` (the `opordSpeech` bridge in
+  `docs/SPEC-dictation-apple-asr.md`); it never falls back to Apple's servers.
+  `scripts/ios-device.sh` builds, signs, installs and launches it on a connected iPhone;
+  the team ID comes from `$OPORD_TEAM_ID` or the gitignored `ios/signing.local`, never the
+  repo. It never changes the Apple account. TestFlight is blocked until App Store Connect
+  is fixed, so the app installs only on your own registered devices. After changing web
+  code, rerun the script (it runs `npm run build` and `npx cap sync ios`). Edit
+  `ios/App/App.xcodeproj` with Xcode; Capacitor manages `ios/App/CapApp-SPM`.
 - **ChatGPT Sites specifics.** Sites builds a project and records it in
   `.openai/hosting.json` (project id, optional storage bindings). Let the Sites tooling
   create and update that file; commit it so later deploys reuse the same site. Every Sites

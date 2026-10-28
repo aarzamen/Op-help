@@ -5,7 +5,7 @@ import monoBoldUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-7
 import monoHeavyUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-800-normal.woff2?url';
 import sansUrl from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2?url';
 import sansBoldUrl from '@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2?url';
-import { fileSlug, pdfSafe } from './host';
+import { fileSlug, isNativeApp, pdfSafe, saveBlob } from './host';
 import { ccpDecor, computeCcp } from './ccp';
 import { CcpLayer } from './CcpLayer';
 import { northReferenceForGrid, parseMgrs } from './geo';
@@ -222,7 +222,11 @@ export async function sheetPng(
   return svgToPng(markup);
 }
 
-export function downloadDataUrl(dataUrl: string, filename: string) {
+export async function downloadDataUrl(dataUrl: string, filename: string) {
+  if (isNativeApp()) {
+    await saveBlob(await (await fetch(dataUrl)).blob(), filename);
+    return;
+  }
   const a = document.createElement('a');
   a.href = dataUrl;
   a.download = filename;
@@ -238,7 +242,7 @@ const SHEET_FILE: Record<SheetId, (p: CasevacPlan) => string> = {
 };
 
 export async function downloadSheetPng(plan: CasevacPlan, sheet: SheetId, bg: Backgrounds) {
-  downloadDataUrl(await sheetPng(plan, sheet, bg), SHEET_FILE[sheet](plan));
+  await downloadDataUrl(await sheetPng(plan, sheet, bg), SHEET_FILE[sheet](plan));
 }
 
 /** The full CASEVAC packet: HLZ, CCP and route sheets, the 9-line card, and the ¶4.a text. */
@@ -313,5 +317,7 @@ export async function downloadCasevacPdf(plan: CasevacPlan, bg: Backgrounds) {
     false
   );
 
-  doc.save(`CASEVAC_${fileSlug(plan.hlz.name || 'plan')}.pdf`);
+  const name = `CASEVAC_${fileSlug(plan.hlz.name || 'plan')}.pdf`;
+  if (isNativeApp()) await saveBlob(doc.output('blob'), name);
+  else doc.save(name);
 }

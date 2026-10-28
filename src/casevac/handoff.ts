@@ -5,7 +5,7 @@ import {
   type CasevacPlan,
   type SheetId,
 } from './model';
-import { fileSlug } from './host';
+import { fileSlug, isNativeApp, nativeShareFile, nativeShareUrl, PUBLIC_SITE_URL } from './host';
 
 /**
  * Move a plan between devices without a server.
@@ -85,7 +85,8 @@ export async function planLink(plan: CasevacPlan): Promise<string> {
       // Older engines have CompressionStream but not 'deflate-raw': send it uncompressed.
     }
   }
-  const url = new URL(window.location.href);
+  // From the app, link to the website: the app's own address only works inside the app.
+  const url = new URL(isNativeApp() ? PUBLIC_SITE_URL : window.location.href);
   url.hash = KEY + payload;
   return url.toString();
 }
@@ -161,6 +162,13 @@ export type ShareResult = 'shared' | 'copied' | 'downloaded' | 'cancelled' | 'fa
 
 /** Share sheet where there is one (AirDrop, Messages), else copy the link. */
 export async function shareLink(url: string, title: string): Promise<ShareResult> {
+  if (isNativeApp()) {
+    try {
+      return (await nativeShareUrl(url, title)) ? 'shared' : 'cancelled';
+    } catch {
+      return 'failed';
+    }
+  }
   if (navigator.share) {
     try {
       await navigator.share({ title, url });
@@ -179,6 +187,13 @@ export async function shareLink(url: string, title: string): Promise<ShareResult
 
 /** Share a file where the browser can (iOS → AirDrop / Files), else download it. */
 export async function shareFile(file: File): Promise<ShareResult> {
+  if (isNativeApp()) {
+    try {
+      return (await nativeShareFile(file, file.name)) ? 'shared' : 'cancelled';
+    } catch {
+      return 'failed';
+    }
+  }
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: file.name });

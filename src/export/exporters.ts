@@ -1,5 +1,6 @@
 import type { ViewId } from '../App';
 import { readItem, readJson, readNote } from '../lib/storage';
+import { isNativeApp, saveBlob } from '../lib/native';
 import { CHECKLISTS, getChecklistItemTexts } from '../lib/checklists';
 import { readOrderMeta } from '../lib/orderMeta';
 import { pdfSafe } from '../lib/pdfText';
@@ -295,7 +296,8 @@ async function docPdf(d: Doc, fileName: string) {
     const right = `${d.footerRight} · ${i}/${pages}`;
     doc.text(pdfSafe(right), pageW - margin - doc.getTextWidth(pdfSafe(right)), pageH - 13);
   }
-  doc.save(fileName);
+  if (isNativeApp()) await saveBlob(doc.output('blob'), fileName);
+  else doc.save(fileName);
 }
 
 /** PDF export of the current view. */
