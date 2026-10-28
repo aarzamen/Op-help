@@ -43,6 +43,7 @@ function PlansDialog({ onClose }: { onClose: () => void }) {
   });
   const [rename, setRename] = useState(current?.name ?? '');
   const [newName, setNewName] = useState('');
+  const [wipeConfirmation, setWipeConfirmation] = useState('');
 
   useEffect(() => {
     const app = document.querySelector<HTMLElement>('.app');
@@ -57,7 +58,7 @@ function PlansDialog({ onClose }: { onClose: () => void }) {
       if (event.key !== 'Tab') return;
       const controls = [
         ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), input:not([hidden]), select:not(:disabled)'
+          'button:not(:disabled), input:not(:disabled):not([hidden]), select:not(:disabled)'
         ) ?? []),
       ].filter((element) => element.getClientRects().length > 0);
       const first = controls[0];
@@ -320,6 +321,44 @@ function PlansDialog({ onClose }: { onClose: () => void }) {
             </section>
           </>
         )}
+        <section className="plans-section">
+          <h3>LOCAL DATA & PRIVACY</h3>
+          <p className="field-hint">
+            Saved plans and JSON backups are unencrypted. Anyone with access to this browser profile
+            or a backup file can read them. Use only information you are authorized to store here.
+          </p>
+          <p className="field-hint">
+            Wipe removes every plan, note and map saved in this browser and resets display
+            preferences. Downloaded backups, PDFs and images remain on your device.
+          </p>
+          <div className="plans-row">
+            <label className="field">
+              <span className="field-label">Type WIPE to confirm</span>
+              <input
+                className="field-input"
+                value={wipeConfirmation}
+                onChange={(event) => setWipeConfirmation(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={busy}
+              />
+            </label>
+            <button
+              type="button"
+              className="chip plans-destructive"
+              disabled={busy || wipeConfirmation !== 'WIPE'}
+              onClick={() => {
+                if (wipeConfirmation !== 'WIPE') return;
+                void run(async () => {
+                  await operations.wipe();
+                  reload();
+                });
+              }}
+            >
+              WIPE SAVED DATA
+            </button>
+          </div>
+        </section>
         <input
           ref={fileRef}
           type="file"
