@@ -6,6 +6,9 @@ type OpordSpeechMessage =
   | { command: 'start'; targetId: string; onDeviceOnly?: boolean }
   | { command: 'stop'; targetId: string };
 
+/** Build identity baked in by vite.config.ts (shown at the foot of every tab). */
+declare const __BUILD__: { version: string; sha: string; branch: string; date: string };
+
 /** Native host → React payload, delivered via the `opord-asr-result` CustomEvent. */
 interface OpordAsrDetail {
   type: 'transcript' | 'status';

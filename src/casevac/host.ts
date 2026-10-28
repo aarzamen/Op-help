@@ -12,6 +12,13 @@ export {
   safeSetItem,
   useLocalStorage,
 } from '../lib/storage';
+export {
+  isNativeApp,
+  nativeShareFile,
+  nativeShareUrl,
+  PUBLIC_SITE_URL,
+  saveBlob,
+} from '../lib/native';
 export { newChecklistItemId as newItemId } from '../lib/checklists';
 export { dtgZulu, fileSlug } from '../lib/dtg';
 export { pdfSafe } from '../lib/pdfText';

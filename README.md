@@ -63,6 +63,20 @@ To publish: `npm ci && npm run build`, then upload `dist/` to any static host ov
 Asset paths are relative, so a domain root or a subpath both work, with no rewrites. The
 ChatGPT Sites project is recorded in `.openai/hosting.json`. Deploy only from `main`.
 
+### iOS app
+
+The same build also ships as an iPhone app (Capacitor, `ios/`): offline from the first
+launch, files go to the share sheet, and DICTATE uses Apple's on-device speech
+recognition. With Xcode, a development certificate and a connected iPhone:
+
+```bash
+echo "OPORD_TEAM_ID=<your Apple team ID>" > ios/signing.local   # once; gitignored
+scripts/ios-device.sh
+```
+
+There's no TestFlight build yet, so the app installs only on devices registered to your
+own Apple team. Everyone else uses the website.
+
 ## Layout
 
 ```
@@ -74,7 +88,9 @@ src/casevac/               CASEVAC planner (own module; reaches the app only via
 src/components/            shared UI: accordions, notes and dictation, forms, compass, icons
 src/content/               doctrine as data: grading rubric, templates, task verbs, glossary
 src/lib/, src/export/      storage helpers, checklists, PDF-safe text, exporters
-tools/                     build plugin that writes dist/sw.js, and the service worker
+tools/                     build plugin that writes dist/sw.js, the service worker, make-icons.py
+capacitor.config.ts, ios/  the iOS app: a Capacitor shell around the same build
+scripts/ios-device.sh      build and install the iOS app on a connected iPhone
 docs/                      specs and DESIGN-SYSTEM.md (what each color means)
 AGENTS.md, CLAUDE.md       rules for coding agents (CLAUDE.md imports AGENTS.md)
 HANDOFF.md                 current state and next steps

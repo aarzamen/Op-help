@@ -4,6 +4,7 @@ import { IconPlans } from './icons';
 import { operations, operationStorageError } from '../lib/storage';
 import { MAX_BACKUP_BYTES, parseBackup, serializeBackup } from '../lib/operationBackup';
 import { fileSlug } from '../lib/dtg';
+import { saveBlob } from '../lib/native';
 import './operations.css';
 
 function currentPlan() {
@@ -97,18 +98,16 @@ function PlansDialog({ onClose }: { onClose: () => void }) {
     }
   };
   const reload = () => window.location.reload();
-  const download = (all: boolean) => {
+  const download = async (all: boolean) => {
     const text = serializeBackup(operations, all);
     const file = new Blob([text], { type: 'application/json' });
-    const url = URL.createObjectURL(file);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `OPORD_${fileSlug(all ? 'all_plans' : current!.name)}_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setStatus('Backup file prepared.');
+    const name = `OPORD_${fileSlug(all ? 'all_plans' : current!.name)}_${new Date().toISOString().slice(0, 10)}.json`;
+    try {
+      await saveBlob(file, name);
+      setStatus('Backup file prepared.');
+    } catch {
+      setStatus('Could not save the backup file.');
+    }
   };
   const restore = async (file: File | undefined) => {
     if (!file) return;

@@ -21,6 +21,7 @@ import CasevacView from './casevac/CasevacTab';
 import { incomingPayload } from './casevac/handoff';
 import ToolsView from './views/ToolsView';
 import OperationManager from './components/OperationManager';
+import { buildStamp, setNativeStatusBar } from './lib/native';
 
 export type ViewId = 'guide' | 'analyze' | 'order' | 'casevac' | 'tools';
 
@@ -85,6 +86,7 @@ export default function App() {
   useEffect(() => {
     if (isBlackoutMode) document.documentElement.setAttribute('data-theme', 'blackout');
     else document.documentElement.removeAttribute('data-theme');
+    setNativeStatusBar(isBlackoutMode).catch(() => {});
   }, [isBlackoutMode]);
 
   useEffect(() => {
@@ -187,6 +189,7 @@ export default function App() {
         {view === 'order' && <OrderView onNavigate={go} />}
         {view === 'casevac' && <CasevacView />}
         {view === 'tools' && <ToolsView />}
+        <footer className="build-stamp">OPORD Analyst · {buildStamp()}</footer>
       </main>
 
       <nav className="bottom-nav" aria-label="Sections">

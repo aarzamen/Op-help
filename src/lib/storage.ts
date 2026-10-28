@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { OperationStore, isOperationKey } from './operationStore';
+import { isNativeApp, nativeCopy } from './native';
 
 // --- Toast / storage helpers ---
 
@@ -162,6 +163,12 @@ export function useLocalStorage<T>(
 
 /** Copy text to the clipboard with a toast either way. */
 export function copyText(text: string, okMsg = 'COPIED TO CLIPBOARD') {
+  if (isNativeApp()) {
+    nativeCopy(text)
+      .then(() => notify(okMsg, 'success'))
+      .catch(() => notify('Copy failed', 'error'));
+    return;
+  }
   if (!navigator.clipboard) {
     notify('Clipboard unavailable — needs a secure (https) context', 'error');
     return;

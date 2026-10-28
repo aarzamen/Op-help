@@ -188,6 +188,16 @@ body {
   .content { padding-bottom: 56px; }
 }
 
+/* build stamp: which build this is (version · commit · branch · build time) */
+.build-stamp {
+  margin: 36px 0 4px;
+  text-align: center;
+  font: 500 10.5px/1.5 'JetBrains Mono', monospace;
+  letter-spacing: 0.03em;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+
 /* toast */
 .toast {
   position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 74px); z-index: 500; /* above the sketch workspace (400) */

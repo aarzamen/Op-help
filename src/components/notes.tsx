@@ -41,7 +41,12 @@ const useDictation = (onResult: (text: string) => void) => {
       const detail = event.detail;
       if (!detail || detail.targetId !== targetId) return;
       if (detail.type === 'status') {
-        if (detail.status === 'stopped' || (detail.status ?? '').endsWith('denied')) {
+        if (detail.status === 'error' || (detail.status ?? '').endsWith('denied')) {
+          // The native side gives up (no permission, no on-device model): say why.
+          notify(detail.message || 'Dictation unavailable', 'error');
+          setIsDictating(false);
+          setDictationStatus('');
+        } else if (detail.status === 'stopped' || (detail.status ?? '').endsWith('denied')) {
           // 'stopped' also fires in response to our own explicit stop, which already
           // clears the status — don't flash it back on afterward.
           setIsDictating(false);
@@ -64,6 +69,19 @@ const useDictation = (onResult: (text: string) => void) => {
     window.addEventListener('opord-asr-result', handleNative);
     return () => window.removeEventListener('opord-asr-result', handleNative);
   }, [targetId]);
+
+  // Leaving the tab mid-dictation must turn the native microphone off too.
+  const dictatingRef = useRef(false);
+  useEffect(() => {
+    dictatingRef.current = isDictating;
+  }, [isDictating]);
+  useEffect(
+    () => () => {
+      if (dictatingRef.current && hasNativeAppleSpeech())
+        window.webkit!.messageHandlers!.opordSpeech!.postMessage({ command: 'stop', targetId });
+    },
+    [targetId]
+  );
 
   // Browser Web Speech fallback — skipped when the native bridge is present.
   useEffect(() => {
