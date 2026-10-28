@@ -7,6 +7,7 @@
 const CACHE = `opord-${VERSION}`;
 const SCOPE = self.registration.scope;
 const SHELL = [SCOPE, `${SCOPE}index.html`];
+const PRECACHED = new Set(PRECACHE.map((p) => new URL(p, SCOPE).href));
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -59,8 +60,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Built files are content-hashed, so cache-first is safe; new ones are cached on the way.
+  // CORS module/font requests send Origin while precache requests do not. Hosts that
+  // send Vary: Origin still serve the same static bytes, so ignore it only for this build.
   event.respondWith(
-    caches.match(req).then(
+    caches.match(req, { ignoreVary: PRECACHED.has(bare) }).then(
       (hit) =>
         hit ||
         fetch(req).then((res) => {
