@@ -64,7 +64,7 @@ don't run `npm run format` across the repo in an unrelated change.
 
 ```
 index.html                 # entry; /src/main.tsx; favicon, manifest, apple-touch-icon
-public/                    # favicon.svg, icon-192/512.png, apple-touch-icon.png, manifest.webmanifest
+public/                    # icons (generated: `uv run tools/make-icons.py` from design/app-icon-source.png), manifest
 tools/serviceWorker.ts     # Vite plugin: emits dist/sw.js (tools/sw.js + the precache list)
 tools/sw.js                # the service worker (offline after one online visit)
 src/main.tsx               # React root; ErrorBoundary, @fontsource imports, SW registration (prod)
