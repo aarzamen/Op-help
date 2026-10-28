@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { OperationStore, isOperationKey } from './operationStore';
 
 // --- Toast / storage helpers ---
 
@@ -10,7 +11,7 @@ export function notify(msg: string, type: ToastType = 'success') {
 }
 
 /** localStorage.setItem that never throws mid-keystroke (e.g. QuotaExceededError). */
-export function safeSetItem(key: string, value: string): boolean {
+function writeRaw(key: string, value: string): boolean {
   try {
     window.localStorage.setItem(key, value);
     return true;
@@ -21,10 +22,85 @@ export function safeSetItem(key: string, value: string): boolean {
   }
 }
 
+function removeRaw(key: string): boolean {
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    notify('Could not remove saved data — check browser storage access', 'error');
+    return false;
+  }
+}
+
+/** Unscoped, guarded adapter. The operation model must never scope its own keys twice. */
+export const operations = new OperationStore(
+  {
+    get length() {
+      return window.localStorage.length;
+    },
+    key: (i) => window.localStorage.key(i),
+    getItem: (key) => window.localStorage.getItem(key),
+    setItem: (key, value) => {
+      if (!writeRaw(key, value))
+        throw new Error('Could not save the plan — browser storage may be full.');
+    },
+    removeItem: (key) => {
+      if (!removeRaw(key)) throw new Error('Could not remove saved plan data.');
+    },
+  },
+  {
+    withLock: (action) => {
+      if (!navigator.locks?.request)
+        return Promise.reject(
+          new Error('Named plans need an up-to-date browser with Web Locks support.')
+        );
+      return navigator.locks.request('opord-operations', action);
+    },
+  }
+);
+
+let startupError = '';
+export const operationStorageError = () => startupError;
+export async function initializeStorage() {
+  try {
+    await operations.initialize();
+  } catch (error) {
+    startupError = error instanceof Error ? error.message : 'Could not initialize saved plans.';
+  }
+}
+
+/** Map logical keys at the boundary; post-check closes races with another tab's reset. */
+export function safeSetItem(key: string, value: string): boolean {
+  let physical: string | undefined;
+  try {
+    physical = operations.scopedKey(key);
+    if (!writeRaw(physical, value)) return false;
+    if (isOperationKey(key) && operations.scopedKey(key) !== physical)
+      throw new Error('The selected plan changed. Reload before editing.');
+    return true;
+  } catch (error) {
+    if (physical && isOperationKey(key)) removeRaw(physical);
+    notify(
+      error instanceof Error ? error.message : 'Could not save this plan. Reload before editing.',
+      'error'
+    );
+    return false;
+  }
+}
+
+export function removeItem(key: string): boolean {
+  try {
+    return removeRaw(operations.scopedKey(key));
+  } catch (error) {
+    notify(error instanceof Error ? error.message : 'Could not remove saved data.', 'error');
+    return false;
+  }
+}
+
 /** localStorage.getItem that never throws (private mode / blocked storage) and never returns null. */
 export function readItem(key: string): string {
   try {
-    return window.localStorage.getItem(key) ?? '';
+    return window.localStorage.getItem(operations.scopedKey(key)) ?? '';
   } catch {
     return '';
   }
