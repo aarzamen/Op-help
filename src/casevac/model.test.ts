@@ -110,6 +110,19 @@ describe('normalizePlan', () => {
     expect(typeof p.nineLine.mist[0].id).toBe('string');
   });
 
+  it('caps each HLZ marking entry so a crafted file cannot freeze the 4.a text', () => {
+    const huge = 'x'.repeat(2_000_000);
+    const p = normalizePlan({
+      v: 1,
+      hlz: { markDay: [huge, 'Colored smoke'], markNight: Array.from({ length: 50 }, () => huge) },
+    })!;
+    expect(p.hlz.markDay).toEqual(['x'.repeat(80), 'Colored smoke']);
+    expect(p.hlz.markNight).toHaveLength(20);
+    for (const m of p.hlz.markNight) expect(m).toHaveLength(80);
+    const g = computeHlz(p.hlz, northReferenceForGrid(p.hlz.grid), p.ccp.grid);
+    expect(casevacParagraph(p, g, routeTimeline(p.route)).length).toBeLessThan(10_000);
+  });
+
   it('never yields a plan that the sketch and text builders choke on (fuzz)', () => {
     let seed = 7;
     const rand = () => (seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
