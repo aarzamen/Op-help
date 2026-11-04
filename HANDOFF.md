@@ -1,7 +1,7 @@
 # HANDOFF
 
 State: NEAR
-Last wrap: 2026-11-04, branch `cloud/v1-paperwork`, on `main` 4c944dc
+Last wrap: 2026-11-04, branch `cloud/v1-paperwork`, on `main` e9c87eb (#21 merged)
 
 `main` is the product. It holds the named plans, backup and wipe (#13, #14), the
 October 23 review fixes (#18), the new icon (#19), the build stamp and the iOS app (#20),
@@ -17,12 +17,12 @@ redeployed from `main` through ChatGPT Sites by the owner. TestFlight is blocked
 App Store Connect agreement problem, so a release is a GitHub Release plus "build it
 yourself with your own Apple team" (README, _iOS app_). Android is later and out of scope.
 
-Two PRs from the 2026-11-04 cloud session are open against `main`:
+From the 2026-11-04 cloud session:
 
-- #21 `cloud/audit-fix`: `npm audit fix` (no `--force`) and the build tools moved to
-  `devDependencies`. 15 dev-only advisories remain (vitest 5 and the eslint/minimatch
-  chain need major bumps). Reinstall the iPhone app after merging.
-- `cloud/v1-paperwork` (this file): HLZ marking entries from a plan file capped at 80
+- #21 `cloud/audit-fix`, merged 2026-11-04: `npm audit fix` (no `--force`) and the build
+  tools moved to `devDependencies`. 15 dev-only advisories remain (vitest 5 and the
+  eslint/minimatch chain need major bumps). Reinstall the iPhone app from `main`.
+- `cloud/v1-paperwork` (this file), open: HLZ marking entries from a plan file capped at 80
   characters, this handoff, `AGENTS.md` reduced to rules, `docs/INTEGRATION_PROMPT.md`
   moved to `docs/history/`, version 1.0.0 and `CHANGELOG.md`.
 
@@ -70,8 +70,8 @@ ends in a group-of-four terrain-model brief graded on the checklist in
 
 ### M1: ship v1.0 (owner, about 30 min, human-only)
 
-1. [S] Merge #21 and the `cloud/v1-paperwork` PR once CI is green, then `git pull` on the
-   laptop. Files: none.
+1. [S] Merge the `cloud/v1-paperwork` PR once CI is green (#21 is already in), then
+   `git pull` on the laptop. Files: none.
 2. [S] Rerun `scripts/ios-device.sh` so the phone carries v1.0.0 and the audit-fixed
    lockfile; the build stamp should read `iOS app · v1.0.0 · <sha> · main` with no
    `+dirty`. Human-only: the signing team and the device.
@@ -121,7 +121,8 @@ marker plus the board: grids, astro data, challenge and pass, timeline), practic
 
 ## Human-only before next session
 
-- Merge the two cloud PRs, reinstall the app, redeploy the website, tag v1.0.0 (M1).
+- Merge the `cloud/v1-paperwork` PR, reinstall the app, redeploy the website, tag v1.0.0
+  (M1).
 - An iPad, and an iPhone for the website pass (M2, about 45 min).
 - Optional: the lecture recording or transcript for more instructor tips.
 
@@ -137,8 +138,8 @@ file's state and session log are updated.
 
 ## Session log
 
-- 2026-11-04: cloud session; PR #21 (`npm audit fix`, build tools to `devDependencies`)
-  and the `cloud/v1-paperwork` PR (marking cap, this handoff, `AGENTS.md` rules-only,
+- 2026-11-04: cloud session; PR #21 (`npm audit fix`, build tools to `devDependencies`;
+  merged the same day) and the `cloud/v1-paperwork` PR (marking cap, this handoff, `AGENTS.md` rules-only,
   `docs/history/`, version 1.0.0, `CHANGELOG.md`). No deploy, tag or device work.
 - 2026-10-28: merged #12 to #15 and #18 to #20, closed #11 and #16; new icon; iOS app
   (Capacitor) with on-device dictation and a build stamp, installed on the iPhone 17 Pro
