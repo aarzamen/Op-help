@@ -167,7 +167,7 @@ repeated in the backlog above; the backlog is the one to work from.
       are **self-hosted** via `@fontsource` (latin subsets imported in `src/main.tsx`),
       not the Google Fonts CDN, so typography is consistent offline and the app makes
       no third-party font request (relevant for field use / OPSEC).
-- Spec: [`docs/INTEGRATION_PROMPT.md`](docs/INTEGRATION_PROMPT.md).
+- Spec: [`docs/history/INTEGRATION_PROMPT.md`](docs/history/INTEGRATION_PROMPT.md).
 - Acceptance: TOOLS tab shows a "MAP SYMBOLS" 4-column grid of 12 cards; friendly =
   rectangle, hostile = diamond; BN COC = two echelon ticks, CO COC = one; toggling
   blackout turns all 12 glyphs (including the red cross) red; labels in JetBrains Mono.
