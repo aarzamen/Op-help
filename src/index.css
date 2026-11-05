@@ -775,7 +775,7 @@ html.ws-open, html.ws-open body { overscroll-behavior: none; }
 :root[data-theme='blackout'] .ws-wide { box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.85); }
 
 /* =====================================================================
-   MAP SYMBOLS  —  appended per docs/INTEGRATION_PROMPT.md.
+   MAP SYMBOLS  —  appended per docs/history/INTEGRATION_PROMPT.md.
 
    Uses only existing :root tokens. Glyphs inherit `color` from .sym-frame,
    so blackout mode (which remaps --accent-blue and --accent-red to red)

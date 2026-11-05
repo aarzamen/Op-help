@@ -559,8 +559,17 @@ function uniqueIds<T extends { id: string }>(items: T[]): T[] {
   });
 }
 
+/** HLZ markings are chips from DAY_MARKINGS / NIGHT_MARKINGS, so no legitimate entry comes
+ * near 80 characters. The cap matters because the ¶4.a text joins every entry: a crafted
+ * file with megabytes per entry used to freeze that view (same idea as COORD_MAX). */
+const MARK_MAX = 80;
 const strings = (v: unknown, d: string[]) =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : d;
+  Array.isArray(v)
+    ? v
+        .filter((x): x is string => typeof x === 'string')
+        .slice(0, 20)
+        .map((m) => m.slice(0, MARK_MAX))
+    : d;
 
 const OBSTACLE_KIND_IDS = OBSTACLE_KINDS.map((o) => o.kind);
 const NODE_KIND_IDS = NODE_KINDS.map((k) => k.kind);

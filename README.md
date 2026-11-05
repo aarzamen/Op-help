@@ -9,15 +9,16 @@ a client-only React app built to a static site: it runs in any modern phone, tab
 desktop browser, keeps all data in that browser, works offline after one visit, and is
 hosted on ChatGPT Sites at <https://op-help.annonable.chatgpt.site>.
 
-**Status:** FAR, 2026-10-23. The live site works, but GitHub `main` is behind it: the
-live build includes Codex PRs #12 to #14, which are still open. Current milestone: `main`
-matches the live site. See `HANDOFF.md`.
+**Status:** NEAR, 2026-11-04. `main` is v1.0: the iPhone app is installed from it and
+the website is the same code, except that the live site still runs an older build until
+it is redeployed from `main`. See `HANDOFF.md`.
 
 ## Capabilities
 
 "Verified" means it was exercised in a browser or test on 2026-10-23 (headless Chromium at
-phone, small-phone and desktop sizes, light and blackout). No real iPhone or iPad has been
-tested yet.
+phone, small-phone and desktop sizes, light and blackout). The iPhone app was installed
+and its dictation confirmed on a real iPhone on 2026-10-28; no iPad or Android device has
+been tested.
 
 - GUIDE, ANALYZE, ORDER, CASEVAC and TOOLS tabs render without errors: verified
 - GUIDE: method, graded-checklist rehearsal tracker, worked examples, task verbs, glossary: renders verified; tracker ticking not exercised
@@ -36,7 +37,7 @@ tested yet.
 - Live compass with grid and magnetic arrows (real G-M angle): unverified this session (needs device sensors)
 - Dictation into notes: unverified this session (only the microphone release on tab change was checked, with a fake recognizer)
 - PCC/PCI checklist editing: renders verified; editing not exercised
-- Named plans, backup and restore, and data wipe: on the live site from open PRs #13 and #14; not on `main`; not exercised by this wrap
+- Named plans, backup and restore, and data wipe: on `main` (#13, #14) with unit tests; not exercised in a browser by a wrap
 
 ## Install
 
@@ -120,15 +121,14 @@ file is `.openai/hosting.json` (the Sites project id; no secrets).
 
 ## Known issues
 
-- GitHub `main` is behind the live site: open PRs #12 (offline fix for hosts that send
-  `Vary: Origin`, likely needed on iPhone Safari), #13 (named plans and backup) and #14
-  (data wipe) are deployed but unmerged. Do not redeploy from `main` until they merge.
-- Not yet tested on a real iPhone or iPad.
+- The live site runs an older build than `main`; redeploy from `main` (see `HANDOFF.md`).
+- Not yet tested on a real iPad; the website (as opposed to the app) is untested on a
+  real iPhone.
 - OPSEC: operational text is stored unencrypted in the browser. A typed-confirmation wipe
-  exists in open PR #14; there is no encryption.
+  exists; there is no encryption.
 - On Android, the compass may mix relative and absolute orientation readings and drift.
-- `npm audit` reports issues in build tools and in DOMPurify (pulled in by jsPDF for an
-  HTML-to-PDF path this app does not use).
+- `npm audit` reports issues in dev tooling only (vitest, eslint); the DOMPurify advisory
+  via jsPDF is fixed.
 - On phones, the CCP and route sketches open small; pinch to zoom.
 - Dragging the overlay opacity slider rewrites the stored image on every step, which can
   stutter on phones.
