@@ -137,6 +137,15 @@ file is `.openai/hosting.json` (the Sites project id; no secrets).
 
 See `HANDOFF.md`.
 
+## Licence
+
+MIT; see [`LICENSE`](LICENSE) (Copyright (c) 2026 Aaron Arzamendi). The build also
+bundles third-party work under its own terms: the IBM Plex Sans and JetBrains Mono fonts
+(SIL Open Font License 1.1, shipped via `@fontsource`, licence text in each package), the
+NOAA World Magnetic Model coefficients (a US government work, bundled by `geomagnetism`,
+Apache-2.0), and Capacitor and its plugins (MIT). Every other runtime dependency is MIT,
+ISC or similarly permissive; see `package.json`.
+
 ## Attribution
 
 Built with Claude Code, directed by Mike Arzamendi. Publishing to ChatGPT Sites and PRs
